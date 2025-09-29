@@ -119,4 +119,4 @@ if __name__ == "__main__":
     # Test 4
     y_score = np.array([0.3, 0.64, 0.48, 0.96, 0.79, 0.13, 0.92, 0.55])
     y_true = np.array([1, 1, 0, 0, 1, 0, 1, 1])
-    print(f"calculate_tps_fps_for_curve: {calculate_tps_fps_for_curve(y_true, y_score)}", end="\n\n")
+    print(f"calculate_tps_fps_for_curve: {calculate_tpr_fpr_for_curve(y_true, y_score)}", end="\n\n")
