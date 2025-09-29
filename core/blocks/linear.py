@@ -14,9 +14,9 @@ class Linear():
         self._bias = bias
         # Init trainable params and small increments
         self._w = xavier((out_features, in_features), uniform = True)
-        self._b = np.zeros((out_features), dtype = np.float32)
-        self._dw = np.zeros_like(self._w)
-        self._db = np.zeros_like(self._b)
+        self._b = np.zeros((out_features), dtype = np.float64)
+        self._dw = np.zeros_like(self._w, dtype = np.float64)
+        self._db = np.zeros_like(self._b, dtype = np.float64)
         
     def __call__(
         self, 
@@ -26,32 +26,12 @@ class Linear():
         self.x = x
         return self.x @ self._w.T + self._b
     
-    @property
-    def dw(self)-> np.ndarray:
-        return self._dw
-    
-    @property
-    def db(self)-> np.ndarray:
-        return self._db
-    
     def parameters(self):
-        return [(self._w, self._dw), (self._b, self._db)]
-
-    def update_params(
-        self,
-        opt_dw: np.ndarray,
-        opt_db: np.ndarray = None,
-    ):
-        """Update trainable params using optimizer"""
-        self._w -= opt_dw
-        if self._bias and opt_db is not None:
-            self._b -= opt_db
-
-    def zero_grad(self):
-        """Reset small increments"""
-        self._dw = np.zeros_like(self._w)
-        self._db = np.zeros_like(self._b)
-
+        if self._bias:
+            return [(self._w, self._dw), (self._b, self._db)]
+        else:
+            return [(self._w, self._dw)]
+        
     def backward(
         self,
         dLdy: np.ndarray
