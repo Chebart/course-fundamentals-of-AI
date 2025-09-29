@@ -1,1 +1,1 @@
-from .clsf import accuracy, precision, recall, f1, calculate_tps_fps_for_curve
+from .clsf import accuracy, precision, recall, f1, calculate_tpr_fpr_for_curve

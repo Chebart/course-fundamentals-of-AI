@@ -72,7 +72,7 @@ def f1(
     f1 = (beta**2 + 1) * (prec * rec) / (beta * prec + rec + eps)
     return f1
 
-def calculate_tps_fps_for_curve(
+def calculate_tpr_fpr_for_curve(
     y_true: np.ndarray,     
     y_score: np.ndarray,
 )-> tuple[np.ndarray, np.ndarray]:
@@ -88,10 +88,10 @@ def calculate_tps_fps_for_curve(
     threshold_indices = np.hstack((distinct_indices, end))
 
     # calculate tps/fps
-    tps = np.cumsum(y_true)[threshold_indices]
-    fps = (1 + threshold_indices) - tps
+    tpr = np.cumsum(y_true)[threshold_indices]
+    fpr = (1 + threshold_indices) - tpr
 
-    return tps, fps
+    return tpr, fpr
 
 
 if __name__ == "__main__":
