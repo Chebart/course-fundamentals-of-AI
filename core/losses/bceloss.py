@@ -22,5 +22,5 @@ class BCELoss():
         model: Any
     )-> np.ndarray:
         """Calculate backward pass"""
-        dLdy = (y_pred - y_true) / (y_pred * (1 - y_pred)) / len(y_true)
+        dLdy = (y_pred - y_true) / (y_pred * (1 - y_pred) + self.eps) / len(y_true)
         model.backward(dLdy)
