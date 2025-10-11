@@ -1,3 +1,4 @@
+import shutil
 import sys
 import os
 
@@ -12,7 +13,7 @@ from core.metrics import accuracy, precision, recall, f1, calculate_tpr_fpr_for_
 from core.utils import train_test_split, batch_split, plot_curves
 from core.losses import HingeLoss, BCELoss
 from core.optimizers import SGD
-from model import MLP
+from core.models import MLP
   
 
 if __name__ == "__main__":
@@ -21,7 +22,12 @@ if __name__ == "__main__":
     TEST_STEP = 2
     EPOCHS = 100
     BATCH_SIZE = 64
-    LR = 1e-4
+    LR = 1e-2
+    # Create directory for results
+    results_path = f"{os.getcwd()}/lab1/results"
+    if os.path.exists(results_path):
+        shutil.rmtree(results_path)
+    os.makedirs(results_path)
 
     # Get dataset
     mushroom = fetch_ucirepo(id=73) 
