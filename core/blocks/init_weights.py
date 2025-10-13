@@ -6,7 +6,12 @@ def xavier(
 )-> np.ndarray:
     """Xavier weights initialization"""
     # Get dims
-    in_features, out_features = shape
+    if len(shape) == 2:
+        in_features, out_features = shape
+    elif len(shape) == 4:
+        in_features = shape[1] * shape[3]
+        out_features = shape[0] * shape[2]
+
     # Calculate xavier uniform or xavier normal
     if uniform:
         limit = np.sqrt(6 / (in_features + out_features))
