@@ -40,3 +40,28 @@ def split_2d_data_on_windows(
     windows = np.lib.stride_tricks.as_strided(x, shape=shape, strides=strides)
 
     return windows, x.shape
+
+def get_2d_data_from_windows(
+    windows: np.ndarray, 
+    stride: int,
+    pad: int
+)-> tuple[np.ndarray, np.ndarray]:
+    """Union small 2D sliding windows of size (k_size, k_size) into a 4D input (N, C, H, W)
+       according to the specified stride and padding"""
+    # Output dimensions
+    N, C, H_out, W_out, k_size, _ = windows.shape
+    # Input dimensions
+    H_in = (H_out - 1) * stride + k_size - 2 * pad
+    W_in = (W_out - 1) * stride + k_size - 2 * pad
+    # Get padded input_data
+    input_data = np.zeros((N, C, H_in + 2*pad, W_in + 2*pad), dtype=windows.dtype)
+    s, k = stride, k_size
+    for i in range(H_out):
+        for j in range(W_out):
+            input_data[:, :, i*s:i*s+k, j*s:j*s+k] += windows[:, :, i, j, :, :]
+
+    # Remove padding
+    if pad > 0:
+        input_data = input_data[:, :, pad:-pad, pad:-pad]
+
+    return input_data
