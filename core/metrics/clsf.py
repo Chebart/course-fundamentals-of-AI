@@ -2,7 +2,8 @@ import numpy as np
 
 def calculate_confusion_matrix_stats(
     y_pred: np.ndarray,
-    y_true: np.ndarray  
+    y_true: np.ndarray,
+    num_cls: int
 )-> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Build confusion matrix and get (tp, fp, fn, tn) per class"""
     # Check that labels is integers
@@ -10,8 +11,7 @@ def calculate_confusion_matrix_stats(
     y_pred = y_pred.astype(int)
 
     # Build confusion matrix
-    n_cls = np.max([y_true.max(), y_pred.max()]) + 1
-    conf_matrix = np.zeros((n_cls, n_cls), dtype=int)
+    conf_matrix = np.zeros((num_cls, num_cls), dtype=int)
     for t, p in zip(y_true, y_pred):
         conf_matrix[t, p] += 1
 
@@ -26,11 +26,12 @@ def calculate_confusion_matrix_stats(
 def accuracy(
     y_pred: np.ndarray,
     y_true: np.ndarray,
+    num_cls: int,
     eps: float = 1e-8
 )->np.ndarray:
     """(TP + TN) / (TP + TN + FP + FN)"""
     # Calculate pred stats
-    (tp, fp, fn, tn) = calculate_confusion_matrix_stats(y_pred, y_true)
+    (tp, fp, fn, tn) = calculate_confusion_matrix_stats(y_pred, y_true, num_cls)
     # Calculate metric
     accuracy = (tp + tn) / (tp + tn + fp + fn + eps)
     return accuracy
@@ -38,11 +39,12 @@ def accuracy(
 def precision(
     y_pred: np.ndarray,
     y_true: np.ndarray,
+    num_cls: int,
     eps: float = 1e-8
 )->np.ndarray:
     """TP / (TP + FP)"""
     # Calculate pred stats
-    (tp, fp, _, _) = calculate_confusion_matrix_stats(y_pred, y_true)
+    (tp, fp, _, _) = calculate_confusion_matrix_stats(y_pred, y_true, num_cls)
     # Calculate metric
     precision = (tp) / (tp + fp + eps)
     return precision
@@ -50,11 +52,12 @@ def precision(
 def recall(
     y_pred: np.ndarray,
     y_true: np.ndarray,
+    num_cls: int,
     eps: float = 1e-8
 )->np.ndarray:
     """TP / (TP + FN)"""
     # Calculate pred stats
-    (tp, _, fn, _) = calculate_confusion_matrix_stats(y_pred, y_true)
+    (tp, _, fn, _) = calculate_confusion_matrix_stats(y_pred, y_true, num_cls)
     # Calculate metric
     recall = (tp) / (tp + fn + eps)
     return recall
@@ -62,13 +65,14 @@ def recall(
 def f1(
     y_pred: np.ndarray,
     y_true: np.ndarray,
+    num_cls: int,
     beta: float = 1,
     eps: float = 1e-8
 )->np.ndarray:
     """(beta^2+1) * (presion * recall) / (beta * precision + recall)"""
     # Calculate metric
-    prec = precision(y_pred, y_true)
-    rec = recall(y_pred, y_true)
+    prec = precision(y_pred, y_true, num_cls)
+    rec = recall(y_pred, y_true, num_cls)
     f1 = (beta**2 + 1) * (prec * rec) / (beta * prec + rec + eps)
     return f1
 
