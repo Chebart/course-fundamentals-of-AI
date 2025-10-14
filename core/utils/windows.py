@@ -51,10 +51,10 @@ def get_2d_data_from_windows(
     # Output dimensions
     N, C, H_out, W_out, k_size, _ = windows.shape
     # Input dimensions
-    H_in = (H_out - 1) * stride + k_size - 2 * pad
-    W_in = (W_out - 1) * stride + k_size - 2 * pad
+    H_in = (H_out - 1) * stride + k_size
+    W_in = (W_out - 1) * stride + k_size
     # Get padded input_data
-    input_data = np.zeros((N, C, H_in + 2*pad, W_in + 2*pad), dtype=windows.dtype)
+    input_data = np.zeros((N, C, H_in, W_in), dtype=windows.dtype)
     s, k = stride, k_size
     for i in range(H_out):
         for j in range(W_out):
