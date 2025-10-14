@@ -91,11 +91,19 @@ def calculate_tpr_fpr_for_curve(
     end = np.array([y_true.size - 1])
     threshold_indices = np.hstack((distinct_indices, end))
 
-    # calculate tps/fps
+    # calculate tpr/fpr
     tpr = np.cumsum(y_true)[threshold_indices]
     fpr = (1 + threshold_indices) - tpr
+    tpr = tpr / tpr[-1]
+    fpr = fpr / fpr[-1]
 
-    return tpr, fpr
+    # calculate AUC
+    zero = np.array([0])
+    tpr_diff = np.hstack((np.diff(tpr), zero))
+    fpr_diff = np.hstack((np.diff(fpr), zero))
+    auc = np.dot(tpr, fpr_diff) + np.dot(tpr_diff, fpr_diff) / 2
+
+    return tpr, fpr, auc
 
 
 if __name__ == "__main__":
