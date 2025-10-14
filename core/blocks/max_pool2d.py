@@ -48,15 +48,15 @@ class MaxPool2D(AbstractBlock):
         masked_dLdy = self.max_mask * dLdy[:, :, :, :, None, None]
 
         # Accumulate gradients
-        dx_padded = np.zeros(self.x_shape, dtype=dLdy.dtype)
+        dLdx = np.zeros(self.x_shape, dtype=dLdy.dtype)
         H_out, W_out = dLdy.shape[2:]
         s, k = self._s, self._k
         for i in range(k):
             for j in range(k):
-                dx_padded[:, :, i:s*H_out+i:s, j:s*W_out+j:s] += masked_dLdy[:, :, :, :, i, j]
+                dLdx[:, :, i:s*H_out+i:s, j:s*W_out+j:s] += masked_dLdy[:, :, :, :, i, j]
 
         # Remove padding if needed
         if self._p > 0:
-            dx_padded = dx_padded[:, :, self._p:-self._p, self._p:-self._p]
+            dLdx = dLdx[:, :, self._p:-self._p, self._p:-self._p]
 
-        return dx_padded
+        return dLdx
