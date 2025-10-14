@@ -6,8 +6,10 @@ class Softmax(AbstractBlock):
     """ softmax(x) = exp(x) / sum(exp(x)) """
     
     def forward(self, x):
-        self.y = np.exp(x - np.max(x))
-        return self.y / np.sum(self.y)
+        x = x - np.max(x, axis=-1, keepdims=True)
+        exp_x = np.exp(x)
+        self.y = exp_x / np.sum(exp_x, axis=-1, keepdims=True)
+        return self.y
         
     def parameters(self):
         return []
