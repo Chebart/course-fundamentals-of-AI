@@ -80,10 +80,10 @@ if __name__ == "__main__":
 
             # Calculate metrics
             y_pred = (y_pred >= 0.5).astype(int)
-            train_stats["acc"].append(accuracy(y_pred, train_yb))
-            train_stats["prec"].append(precision(y_pred, train_yb))
-            train_stats["rec"].append(recall(y_pred, train_yb))
-            train_stats["f1"].append(f1(y_pred, train_yb))
+            train_stats["acc"].append(accuracy(y_pred, train_yb, 2))
+            train_stats["prec"].append(precision(y_pred, train_yb, 2))
+            train_stats["rec"].append(recall(y_pred, train_yb, 2))
+            train_stats["f1"].append(f1(y_pred, train_yb, 2))
 
         # Add train statistics
         for key, val_lst in train_stats.items():
@@ -103,10 +103,10 @@ if __name__ == "__main__":
 
                 # Calculate metrics
                 y_pred = (y_pred >= 0.5).astype(int)
-                test_stats["acc"].append(accuracy(y_pred, test_yb))
-                test_stats["prec"].append(precision(y_pred, test_yb))
-                test_stats["rec"].append(recall(y_pred, test_yb))
-                test_stats["f1"].append(f1(y_pred, test_yb))
+                test_stats["acc"].append(accuracy(y_pred, test_yb, 2))
+                test_stats["prec"].append(precision(y_pred, test_yb, 2))
+                test_stats["rec"].append(recall(y_pred, test_yb, 2))
+                test_stats["f1"].append(f1(y_pred, test_yb, 2))
             
             # Add test statistics
             for key, val_lst in test_stats.items():
@@ -160,12 +160,12 @@ if __name__ == "__main__":
 
     y_probs = np.concatenate(y_probs).flatten()
     y_labels = np.concatenate(y_labels).flatten()
-    tpr, fpr = calculate_tpr_fpr_for_curve(y_labels, y_probs)
+    tpr, fpr, auc = calculate_tpr_fpr_for_curve(y_labels, y_probs)
     # draw ROC
     plot_curves(
         fpr,
         tpr,
-        "ROC",
+        f"ROC for binary classification, AUC: {auc}",
         "fpr",
         "tpr",
         "./lab1/results/roc.png"
