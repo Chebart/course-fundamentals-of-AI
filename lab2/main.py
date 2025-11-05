@@ -1,17 +1,19 @@
 from typing import Any
+import logging
 import shutil
 import sys
 import os
 
-from sklearn.preprocessing import label_binarize
+from sklearn.preprocessing import StandardScaler, label_binarize
 from sklearn.datasets import fetch_openml
+from sklearn.manifold import TSNE
 import numpy as np
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 
 from core.metrics import accuracy, precision, recall, f1, calculate_tpr_fpr_for_curve
-from core.utils import train_test_split, batch_split, plot_curves, pad_2d_data
+from core.utils import train_test_split, batch_split, plot_curves, plot_tsne, pad_2d_data
 from core.losses import AbstractLoss, CrossEntropyLoss
 from core.optimizers import SGD
 from core.models import AbstractModel, LeNet5
@@ -46,6 +48,7 @@ def train_fn(
         train_stats["rec"].append(recall(y_pred, train_yb, num_cls))
         train_stats["f1"].append(f1(y_pred, train_yb, num_cls))
 
+    logging.info(f"train_loss: {np.array(train_stats['loss']).mean()}")
     return train_stats
 
 def test_fn(
@@ -70,26 +73,52 @@ def test_fn(
         test_stats["rec"].append(recall(y_pred, test_yb, num_cls))
         test_stats["f1"].append(f1(y_pred, test_yb, num_cls))
 
+    logging.info(f"test_loss: {np.array(test_stats['loss']).mean()}")
     return test_stats
 
 if __name__ == "__main__":
     # Init constants
     TEST_SIZE = 0.3
     TEST_STEP = 2
-    EPOCHS = 20
+    EPOCHS = 30
     BATCH_SIZE = 64
-    LR = 1e-2
+    LR = 1e-4
     # Create directory for results
     results_path = f"{os.getcwd()}/lab2/results"
     if os.path.exists(results_path):
         shutil.rmtree(results_path)
     os.makedirs(results_path)
+    # Setup logger
+    logging.basicConfig(
+        filename=f"{results_path}/main.log",
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s"
+    )
 
     # Get dataset
     mnist = fetch_openml('mnist_784')
-    X = pad_2d_data(mnist.data.to_numpy().reshape(-1, 1, 28, 28), 2)
-    y = mnist.target.astype(np.int64).to_numpy()
+    X = mnist.data.astype('float16')
+    y = mnist.target.astype('int')
 
+    # apply t-sne to visualize mnist data
+    n_samples = 3000
+    indices = np.random.choice(len(X), n_samples, replace=False)
+    X_scaled = StandardScaler().fit_transform(X.iloc[indices])
+    tsne = TSNE(n_components=2, perplexity=30, learning_rate=200, random_state=42)
+    X_embedded = tsne.fit_transform(X_scaled)
+    plot_tsne(
+        X_embedded[:, 0],
+        X_embedded[:, 1],
+        y.iloc[indices],
+        "MNIST Visualization using t-SNE",
+        "t-SNE Component 1",
+        "t-SNE Component 2",
+        f"{results_path}/t-SNE.png"
+    )
+
+    # convert to numpy
+    X = pad_2d_data(X.to_numpy().reshape(-1, 1, 28, 28), 2)
+    y = y.to_numpy()
     # Split data on train/test
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = TEST_SIZE)
     # init parts
@@ -101,7 +130,7 @@ if __name__ == "__main__":
     train_stats_by_epochs = {"loss": [], "acc": [], "prec": [], "rec": [], "f1": []}
     test_stats_by_epochs = {"loss": [], "acc": [], "prec": [], "rec": [], "f1": []}
     for epoch in range(EPOCHS):
-        print(f"epoch: {epoch+1}")
+        logging.info(f"epoch: {epoch+1}")
         train_stats = train_fn(X_train, y_train, model, loss_fn, optimizer)
         # Add train statistics
         for key, val_lst in train_stats.items():
