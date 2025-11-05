@@ -1,4 +1,4 @@
-from ..blocks import Linear, Conv2D, MaxPool2D, ReLU, Softmax, Reshape
+from ..blocks import Linear, Conv2D, MaxPool2D, AvgPool2D, ReLU, Softmax, Reshape
 from .abstract_model import AbstractModel
 
 class LeNet5(AbstractModel):  
@@ -10,10 +10,10 @@ class LeNet5(AbstractModel):
         self.layers = [
             Conv2D(in_channels, 6, kernel_size = 5),
             ReLU(),
-            MaxPool2D(kernel_size = 2, stride = 2),
+            AvgPool2D(kernel_size = 2, stride = 2),
             Conv2D(6, 16, kernel_size = 5),
             ReLU(),
-            MaxPool2D(kernel_size = 2, stride = 2),
+            AvgPool2D(kernel_size = 2, stride = 2),
             Reshape(input_shape=(-1, 16, 5, 5), output_shape=(-1, 400)),
             Linear(400, 120),
             ReLU(),
