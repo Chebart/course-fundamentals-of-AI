@@ -53,9 +53,9 @@ class Conv2D(AbstractBlock):
 
     def parameters(self):
         if self._bias:
-            return [(self._w, self._dw), (self._b, self._db)]
+            return [('w', self._w, self._dw), ('b', self._b, self._db)]
         else:
-            return [(self._w, self._dw)]
+            return [('w', self._w, self._dw)]
 
     def backward(self, dLdy):
         # dLdy shape is (N, out_channels, H_out, W_out)

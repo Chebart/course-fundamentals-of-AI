@@ -21,8 +21,8 @@ class AbstractModel(ABC):
         """Return parameters of the model"""
         params = []
         for layer in self.layers:
-            for p, g in layer.parameters():
-                params.append((p, g))
+            for p_type, p, g in layer.parameters():
+                params.append((p_type, p, g))
         return params
 
     @abstractmethod
