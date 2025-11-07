@@ -54,9 +54,9 @@ if __name__ == "__main__":
     # Split data on train/test
     X_train, X_test, y_train, y_test = train_test_split(X_enc, y, test_size = TEST_SIZE)
     # init parts
-    loss_fn = BCELoss()
     model = MLP(in_features = X_enc.shape[1], out_features = 1)
-    optimizer = SGD(lr = LR)
+    loss_fn = BCELoss(model = model)
+    optimizer = SGD(model = model, lr = LR)
 
     # Train loop
     train_stats_by_epochs = {"loss": [], "acc": [], "prec": [], "rec": [], "f1": []}
@@ -72,11 +72,11 @@ if __name__ == "__main__":
             train_stats["loss"].append(loss)
 
             # Do backward pass
-            loss_fn.backward(y_pred, train_yb, model = model)
+            loss_fn.backward(y_pred, train_yb)
             # Update params
-            optimizer.step(model.parameters())
+            optimizer.step()
             # Reset gradients
-            optimizer.zero_grad(model.parameters())
+            optimizer.zero_grad()
 
             # Calculate metrics
             y_pred = (y_pred >= 0.5).astype(int)
