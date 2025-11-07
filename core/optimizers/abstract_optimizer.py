@@ -14,14 +14,6 @@ class AbstractOptimizer(ABC):
         alpha: float = 0.5,
         reg_type: Optional[Literal["l1", "l2", "elasticnet"]] = None
     ):
-        """
-        Args:
-            model (AbstractModel): Model with trainable parameters
-            lr (float): Learning rate
-            lmbda (float): Regularization coefficient
-            alpha (float): ElasticNet mixing parameter
-            reg_type (Optional[Literal["l1", "l2", "elasticnet"]]): Regularization type
-        """
         self.model = model
         self.lr = lr
         self.reg_type = reg_type

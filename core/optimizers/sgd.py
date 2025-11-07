@@ -15,6 +15,16 @@ class SGD(AbstractOptimizer):
         momentum: float = 0.0,
         nesterov: bool = False,
     ):
+        """
+        Args:
+            model (AbstractModel): Model with trainable parameters
+            lr (float): Learning rate
+            lmbda (float): Regularization coefficient
+            alpha (float): ElasticNet mixing parameter
+            reg_type (Optional[Literal["l1", "l2", "elasticnet"]]): Regularization type
+            momentum (float): Momentum factor
+            nesterov (bool): Whether to use Nesterov momentum
+        """
         super().__init__(model, lr, lmbda, alpha, reg_type)
         self.momentum = momentum
         self.nesterov = nesterov
