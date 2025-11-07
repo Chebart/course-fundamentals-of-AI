@@ -1,4 +1,3 @@
-from typing import Any
 import logging
 import shutil
 import sys
@@ -15,7 +14,7 @@ sys.path.insert(0, parent_dir)
 from core.metrics import accuracy, precision, recall, f1, calculate_tpr_fpr_for_curve
 from core.utils import train_test_split, batch_split, plot_curves, plot_tsne, pad_2d_data
 from core.losses import AbstractLoss, CrossEntropyLoss
-from core.optimizers import SGD
+from core.optimizers import AbstractOptimizer, SGD, Adam
 from core.models import AbstractModel, LeNet5
   
 def train_fn(
@@ -23,7 +22,7 @@ def train_fn(
     y_train: np.ndarray,
     model: AbstractModel,
     loss_fn: AbstractLoss,
-    optimizer: Any
+    optimizer: AbstractOptimizer
 )-> np.ndarray:
     train_stats =  {"loss": [], "acc": [], "prec": [], "rec": [], "f1": []}
     for train_Xb, train_yb in batch_split(X_train, y_train, batch_size = BATCH_SIZE): 
@@ -34,11 +33,11 @@ def train_fn(
         train_stats["loss"].append(loss)
 
         # Do backward pass
-        loss_fn.backward(y_pred, train_yb, model = model)
+        loss_fn.backward(y_pred, train_yb)
         # Update params
-        optimizer.step(model.parameters())
+        optimizer.step()
         # Reset gradients
-        optimizer.zero_grad(model.parameters())
+        optimizer.zero_grad()
 
         # Calculate metrics
         num_cls = y_pred.shape[1]
@@ -79,10 +78,10 @@ def test_fn(
 if __name__ == "__main__":
     # Init constants
     TEST_SIZE = 0.3
-    TEST_STEP = 2
-    EPOCHS = 30
+    TEST_STEP = 3
+    EPOCHS = 15
     BATCH_SIZE = 64
-    LR = 1e-4
+    LR = 1e-5
     # Create directory for results
     results_path = f"{os.getcwd()}/lab2/results"
     if os.path.exists(results_path):
@@ -122,9 +121,10 @@ if __name__ == "__main__":
     # Split data on train/test
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = TEST_SIZE)
     # init parts
-    loss_fn = CrossEntropyLoss()
     model = LeNet5(in_channels = 1, out_channels = 10)
-    optimizer = SGD(lr = LR)
+    loss_fn = CrossEntropyLoss(model = model)
+    #optimizer = SGD(model = model, lr = LR, reg_type = "l2", momentum = 0.1, nesterov=True)
+    optimizer = Adam(model = model, lr = LR, reg_type = "l2")
 
     # Train loop
     train_stats_by_epochs = {"loss": [], "acc": [], "prec": [], "rec": [], "f1": []}
