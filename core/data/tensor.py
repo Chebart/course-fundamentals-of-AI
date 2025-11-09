@@ -9,8 +9,9 @@ class Tensor:
     and seamless CPU/GPU device tracking.
     """
 
-    def __init__(self, data, device: str = "cpu"):
-        self._backend = self.define_backend(device)
+    def __init__(self, data, dtype: str = "fp16", device: str = "cpu"):
+        self._backend = Tensor.define_backend(device)
+        self._dtype = Tensor.define_backend(self._backend, dtype)
 
         if self.backend.__name__ == "cupy":
             self._device = device
@@ -22,6 +23,38 @@ class Tensor:
             self._data = self.backend.array(data)
 
     # ---------------------
+    # Verification methods
+    # ---------------------
+
+    def same_device(self, other: Tensor):
+        return self.device == other.device
+
+    @staticmethod
+    def define_backend(device: str):
+        if device.startswith("cuda"):
+            if "cupy" not in AVAILABLE_BACKENDS:
+                raise ValueError(f"CuPy is not installed. Cannot move tensor to {device}.")
+            return AVAILABLE_BACKENDS["cupy"]
+        
+        return AVAILABLE_BACKENDS["numpy"]
+
+    @staticmethod
+    def get_backend_dtype(backend, dtype: str):
+        dtype_map = {
+            "fp16": backend.float16,
+            "fp32": backend.float32,
+            "fp64": backend.float64,
+            "int16": backend.int16,
+            "int32": backend.int32,
+            "int64": backend.int64,
+            "bool": backend.bool_,
+        }
+        if dtype not in dtype_map:
+            raise ValueError(f"Unsupported dtype: '{dtype}'")
+        
+        return dtype_map[dtype]
+    
+    # ---------------------
     # Properties
     # ---------------------
 
@@ -32,6 +65,10 @@ class Tensor:
     @property
     def data(self):
         return self._data
+
+    @property
+    def T(self):
+        return Tensor(self.data.T, self.device)
 
     @property
     def device(self):
@@ -48,11 +85,15 @@ class Tensor:
     def shape(self):
         return self._data.shape
 
+    @property
+    def dtype(self):
+        return self._dtype
+
     # ---------------------
     # Device transfer methods
     # ---------------------
 
-    def to_device(self, device: str):
+    def to_device(self, device: str)-> Tensor:
         new_backend = self.define_backend(device)
         self._device = device
 
@@ -70,22 +111,6 @@ class Tensor:
         return self
 
     # ---------------------
-    # Verification methods
-    # ---------------------
-
-    @staticmethod
-    def define_backend(device: str):
-        if device.startswith("cuda"):
-            if "cupy" not in AVAILABLE_BACKENDS:
-                raise ValueError(f"CuPy is not installed. Cannot move tensor to {device}.")
-            return AVAILABLE_BACKENDS["cupy"]
-        
-        return AVAILABLE_BACKENDS["numpy"]
-
-    def same_device(self, other: Tensor):
-        return self.device == other.device
-
-    # ---------------------
     # Binary operation methods
     # ---------------------
 
@@ -101,7 +126,7 @@ class Tensor:
             else:
                 result = op_func(self.data, other)
 
-            return Tensor(result, self.device)
+            return Tensor(result, self.dtype, self.device)
         
         return method
     
@@ -121,47 +146,54 @@ class Tensor:
     # Unary operation methods
     # ---------------------
 
-    def __neg__(self):
-        return Tensor(-self.data, self.device)
+    def __neg__(self)-> Tensor:
+        return Tensor(-self.data, self.dtype, self.device)
 
     # ---------------------
     # Elementwise methods
     # ---------------------
 
-    def exp(self):
-        return Tensor(self.backend.exp(self.data), self.device)
+    def exp(self)-> Tensor:
+        return Tensor(self.backend.exp(self.data), self.dtype, self.device)
 
-    def log(self):
-        return Tensor(self.backend.log(self.data), self.device)
+    def log(self)-> Tensor:
+        return Tensor(self.backend.log(self.data), self.dtype, self.device)
 
-    def sign(self):
-        return Tensor(self.backend.sign(self.data), self.device)
+    def sign(self)-> Tensor:
+        return Tensor(self.backend.sign(self.data), self.dtype, self.device)
 
     # ---------------------
     # Views methods
     # ---------------------
 
-    def __getitem__(self, index):
-        return Tensor(self.data[index], self.device)
+    def __getitem__(self, index)-> Tensor:
+        return Tensor(self.data[index], self.dtype, self.device)
 
-    def reshape(self, *shape):
-        return Tensor(self.data.reshape(*shape), self.device)
+    def reshape(self, *shape)-> Tensor:
+        return Tensor(self.data.reshape(*shape), self.dtype, self.device)
 
-    def transpose(self, *axes):
-        return Tensor(self.data.transpose(*axes), self.device)
+    def transpose(self, *axes)-> Tensor:
+        return Tensor(self.data.transpose(*axes), self.dtype, self.device)
 
-    def as_strided(self, shape, strides):
-        return Tensor(self.backend.lib.stride_tricks.as_strided(self.data, shape=shape, strides=strides), self.device)
+    def as_strided(self, shape, strides)-> Tensor:
+        return Tensor(self.backend.lib.stride_tricks.as_strided(self.data, shape=shape, strides=strides), 
+                      self.dtype, self.device)
 
     # ---------------------
     # Aggregation methods
     # ---------------------
 
-    def sum(self, axis=None, keepdims=False):
-        return Tensor(self.data.sum(axis=axis, keepdims=keepdims), self.device)
+    def max(self, axis=None, keepdims=False)-> Tensor:
+        return Tensor(self.data.max(axis=axis, keepdims=keepdims), self.dtype, self.device)
 
-    def mean(self, axis=None, keepdims=False):
-        return Tensor(self.data.mean(axis=axis, keepdims=keepdims), self.device)
+    def min(self, axis=None, keepdims=False)-> Tensor:
+        return Tensor(self.data.min(axis=axis, keepdims=keepdims), self.dtype, self.device)
+
+    def sum(self, axis=None, keepdims=False)-> Tensor:
+        return Tensor(self.data.sum(axis=axis, keepdims=keepdims), self.dtype, self.device)
+
+    def mean(self, axis=None, keepdims=False)-> Tensor:
+        return Tensor(self.data.mean(axis=axis, keepdims=keepdims), self.dtype, self.device)
 
     # ---------------------
     # Utility methods
@@ -171,23 +203,45 @@ class Tensor:
         self._data.fill(value)
         return self
     
-    def clone(self):
-        return Tensor(self.data.copy(), device=self.device)
+    def clone(self)-> Tensor:
+        return Tensor(self.data.copy(), self.dtype, self.device)
 
     @staticmethod
-    def eye(n: int, m: int = None, device: str = "cpu"):
+    def zeros(shape, dtype = "fp16", device="cpu")-> Tensor:
         backend = Tensor.define_backend(device)
-        return Tensor(backend.eye(n, m), device = device)
+        return Tensor(backend.zeros(shape, dtype=dtype), dtype, device)
+    
+    @staticmethod
+    def eye(
+        n: int, 
+        m: int = None, 
+        dtype = "fp16", 
+        device: str = "cpu"
+    )-> Tensor:
+        backend = Tensor.define_backend(device)
+        return Tensor(backend.eye(n, m), dtype, device)
 
     @staticmethod
-    def random_uniform(low: float = 0.0, high: float = 1.0, size: tuple = (2, 2), device: str = "cpu"):
+    def random_uniform(
+        low: float = 0.0, 
+        high: float = 1.0, 
+        size: tuple = (2, 2),
+        dtype = "fp16",
+        device: str = "cpu"
+    )-> Tensor:
         backend = Tensor.define_backend(device)
-        return Tensor(backend.random.uniform(low, high, size = size), device = device)
+        return Tensor(backend.random.uniform(low, high, size = size), dtype, device)
 
     @staticmethod
-    def random_normal(mean: float = 0.0, std: float = 1.0, size: tuple = (2, 2), device: str = "cpu"):
+    def random_normal(
+        mean: float = 0.0, 
+        std: float = 1.0, 
+        size: tuple = (2, 2), 
+        dtype = "fp16", 
+        device: str = "cpu"
+    )-> Tensor:
         backend = Tensor.define_backend(device)
-        return Tensor(backend.random.normal(mean, std, size = size), device = device)
+        return Tensor(backend.random.normal(mean, std, size = size), dtype, device)
 
     # ---------------------
     # Representation methods
