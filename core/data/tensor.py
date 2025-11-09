@@ -24,6 +24,8 @@ class Tensor:
 
         # change dtype on string value
         self._dtype = dtype
+        # set strides
+        self._strides = self.data.strides
 
     # ---------------------
     # Verification methods
@@ -86,7 +88,15 @@ class Tensor:
     
     @property
     def shape(self):
-        return self._data.shape
+        return self.data.shape
+
+    @property
+    def ndim(self):
+        return len(self.data.shape)
+
+    @property
+    def strides(self):
+        return self._strides
 
     @property
     def dtype(self):
@@ -144,6 +154,13 @@ class Tensor:
     __rmul__ = __mul__
     __rtruediv__ = _binary_op(lambda x, y: operator.truediv(y, x))
     __rpow__ = _binary_op(lambda x, y: operator.pow(y, x))
+
+    __gt__ = _binary_op(lambda a, b: a > b)
+    __lt__ = _binary_op(lambda a, b: a < b)
+    __ge__ = _binary_op(lambda a, b: a >= b)
+    __le__ = _binary_op(lambda a, b: a <= b)
+    __eq__ = _binary_op(lambda a, b: a == b)
+    __ne__ = _binary_op(lambda a, b: a != b)
 
     @staticmethod
     def _inplace_binary_op(op_func):
@@ -212,7 +229,18 @@ class Tensor:
     # ---------------------
 
     def __getitem__(self, index)-> Tensor:
+        if isinstance(index, Tensor):
+            index = index.data.astype(int)
         return Tensor(self.data[index], self.dtype, self.device)
+    
+    def __setitem__(self, index, value):
+        if isinstance(index, Tensor):
+            index = index.data.astype(int)
+                
+        if isinstance(value, Tensor):
+            value = value.data
+
+        self.data[index] = value
 
     def reshape(self, *shape)-> Tensor:
         return Tensor(self.data.reshape(*shape), self.dtype, self.device)
@@ -221,8 +249,19 @@ class Tensor:
         return Tensor(self.data.transpose(*axes), self.dtype, self.device)
 
     def as_strided(self, shape, strides)-> Tensor:
-        return Tensor(self.backend.lib.stride_tricks.as_strided(self.data, shape=shape, strides=strides), 
-                      self.dtype, self.device)
+        return Tensor(
+            self.backend.lib.stride_tricks.as_strided(self.data, shape=shape, strides=strides), 
+            self.dtype, 
+            self.device
+        )
+
+    def put_along_axis(self, indices, values, axis):
+        if indices.ndim == self.data.ndim - 1:
+            indices = self.backend.expand_dims(indices, axis=axis)
+
+        idx = self.backend.ogrid[tuple(map(slice, self.data.shape))]
+        idx[axis] = indices
+        self.data[tuple(idx)] = values
 
     # ---------------------
     # Aggregation methods
@@ -240,6 +279,9 @@ class Tensor:
     def mean(self, axis=None, keepdims=False)-> Tensor:
         return Tensor(self.data.mean(axis=axis, keepdims=keepdims), self.dtype, self.device)
 
+    def argmax(self, axis=None, keepdims=False)-> Tensor:
+        return Tensor(self.data.argmax(axis=axis), self.dtype, self.device)
+
     # ---------------------
     # Utility methods
     # ---------------------
@@ -248,7 +290,7 @@ class Tensor:
         return self.shape[0]
 
     def fill(self, value: int):
-        self._data.fill(value)
+        self.data.fill(value)
         return self
     
     def clone(self)-> Tensor:
@@ -270,6 +312,39 @@ class Tensor:
         backend = Tensor.define_backend(device)
         backend_dtype = Tensor.get_backend_dtype(backend, dtype)
         return Tensor(backend.eye(n, m, dtype = backend_dtype), dtype, device)
+
+    @staticmethod
+    def where(
+        condition, 
+        x, 
+        y,
+        dtype = "fp16", 
+        device: str = "cpu"        
+    )-> Tensor:
+        if isinstance(condition, Tensor):
+            condition = condition.data
+        if isinstance(x, Tensor):
+            x = x.data
+        if isinstance(y, Tensor):
+            y = y.data
+
+        backend = Tensor.define_backend(device)
+        return Tensor(backend.where(condition, x, y), dtype, device)
+
+    @staticmethod
+    def maximum(
+        x1, 
+        x2,
+        dtype = "fp16", 
+        device: str = "cpu"          
+    )-> Tensor:
+        if isinstance(x1, Tensor):
+            x1 = x1.data
+        if isinstance(x2, Tensor):
+            x2 = x2.data
+
+        backend = Tensor.define_backend(device)
+        return Tensor(backend.maximum(x1, x2), dtype, device)
 
     @staticmethod
     def random_uniform(
