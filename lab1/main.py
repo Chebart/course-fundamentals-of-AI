@@ -11,8 +11,9 @@ sys.path.insert(0, parent_dir)
 
 from core.metrics import accuracy, precision, recall, f1, calculate_tpr_fpr_for_curve
 from core.utils import train_test_split, batch_split, plot_curves
-from core.losses import HingeLoss, BCELoss
-from core.optimizers import SGD
+from core.losses import BCELoss
+from core.optimizers import SGD, Adam
+from core.data import Tensor
 from core.models import MLP
   
 
@@ -23,6 +24,9 @@ if __name__ == "__main__":
     EPOCHS = 100
     BATCH_SIZE = 64
     LR = 1e-2
+    DEVICE = "cuda:0"
+    DTYPE = "fp32"
+
     # Create directory for results
     results_path = f"{os.getcwd()}/lab1/results"
     if os.path.exists(results_path):
@@ -46,17 +50,18 @@ if __name__ == "__main__":
     X_enc = pd.get_dummies(X, drop_first=False).astype(int)
     y = y.map({'e': 0, 'p': 1})
     # Convert Dataframe to numpy
-    X_enc = X_enc.to_numpy().astype(np.float64)
-    y = y.to_numpy()[..., None]
+    X_enc = Tensor(X_enc.to_numpy(), dtype = DTYPE, device=DEVICE)
+    y = Tensor(y.to_numpy()[..., None], dtype = DTYPE, device=DEVICE)
     print(f"\nX_enc.shape: {X_enc.shape}")
     print(f"y.shape: {y.shape}")
 
     # Split data on train/test
     X_train, X_test, y_train, y_test = train_test_split(X_enc, y, test_size = TEST_SIZE)
     # init parts
-    model = MLP(in_features = X_enc.shape[1], out_features = 1)
+    model = MLP(in_features = X_enc.shape[1], out_features = 1).to_device(DEVICE)
     loss_fn = BCELoss(model = model)
-    optimizer = SGD(model = model, lr = LR)
+    #optimizer = SGD(model = model, lr = LR)
+    optimizer = Adam(model = model, lr = LR)
 
     # Train loop
     train_stats_by_epochs = {"loss": [], "acc": [], "prec": [], "rec": [], "f1": []}
@@ -68,7 +73,7 @@ if __name__ == "__main__":
             # Do forward pass
             y_pred = model(train_Xb)
             # Calculate loss
-            loss = loss_fn(y_pred, train_yb).mean()
+            loss = loss_fn(y_pred, train_yb).mean().to_numpy()
             train_stats["loss"].append(loss)
 
             # Do backward pass
@@ -77,6 +82,10 @@ if __name__ == "__main__":
             optimizer.step()
             # Reset gradients
             optimizer.zero_grad()
+
+            # Convert results to numpy array
+            y_pred = y_pred.to_numpy()
+            train_yb = train_yb.to_numpy()
 
             # Calculate metrics
             y_pred = (y_pred >= 0.5).astype(int)
@@ -98,8 +107,12 @@ if __name__ == "__main__":
                 # Do forward pass
                 y_pred = model(test_Xb)
                 # Calculate loss
-                loss = loss_fn(y_pred, test_yb).mean()
+                loss = loss_fn(y_pred, test_yb).mean().to_numpy()
                 test_stats["loss"].append(loss)
+
+                # Convert results to numpy array
+                y_pred = y_pred.to_numpy()
+                test_yb = test_yb.to_numpy()
 
                 # Calculate metrics
                 y_pred = (y_pred >= 0.5).astype(int)
@@ -155,8 +168,8 @@ if __name__ == "__main__":
     y_labels = []
     for X_batch, y_batch in batch_split(X_test, y_test, batch_size = BATCH_SIZE):
         probs = model(X_batch)
-        y_probs.append(probs)
-        y_labels.append(y_batch)
+        y_probs.append(probs.to_numpy())
+        y_labels.append(y_batch.to_numpy())
 
     y_probs = np.concatenate(y_probs).flatten()
     y_labels = np.concatenate(y_labels).flatten()
