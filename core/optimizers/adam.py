@@ -1,7 +1,5 @@
 from typing import Literal, Optional
 
-import numpy as np
-
 from .abstract_optimizer import AbstractOptimizer 
 from ..models import AbstractModel
 
@@ -49,11 +47,11 @@ class Adam(AbstractOptimizer):
 
             # Update 1st and 2nd moments
             self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * (g)
-            self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * np.square(g)
+            self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * g**2
 
             # Do bias correction
             m_corrected = self.m[i] / (1 - self.beta1**self.t)
             v_corrected = self.v[i] / (1 - self.beta2**self.t)
 
             # update the parameters
-            p -= self.lr * (m_corrected / (np.sqrt(v_corrected) + self.eps))
+            p -= self.lr * (m_corrected / (v_corrected**0.5 + self.eps))

@@ -1,9 +1,8 @@
 from typing import Literal, Optional
 from abc import ABC, abstractmethod
 
-import numpy as np
-
 from ..models import AbstractModel
+from core.data import Tensor
 
 class AbstractOptimizer(ABC):
     def __init__(
@@ -21,14 +20,14 @@ class AbstractOptimizer(ABC):
         self.alpha = alpha
         self.eps: float = 1e-8
 
-    def get_grad_reg(self, w: np.ndarray)-> np.ndarray|float:
+    def get_grad_reg(self, w: Tensor)-> Tensor|float:
         """Get gradient of regularization term"""
         if self.reg_type == "l2":
             return self.lmbda * w
         elif self.reg_type == "l1":
-            return self.lmbda * np.sign(w)
+            return self.lmbda * w.sign()
         elif self.reg_type == "elasticnet":
-            return self.lmbda * (self.alpha * np.sign(w) + (1 - self.alpha) * w)
+            return self.lmbda * (self.alpha * w.sign() + (1 - self.alpha) * w)
         else:
             return 0.0
 
