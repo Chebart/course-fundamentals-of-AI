@@ -1,5 +1,3 @@
-import numpy as np
-
 from .abstract_block import AbstractBlock
 
 class Reshape(AbstractBlock):

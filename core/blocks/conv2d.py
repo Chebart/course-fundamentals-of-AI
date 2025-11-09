@@ -1,8 +1,7 @@
-import numpy as np
-
 from ..utils import split_2d_data_on_windows, get_2d_data_from_windows
 from .abstract_block import AbstractBlock
 from .init_weights import xavier 
+from core.data import Tensor
 
 class Conv2D(AbstractBlock):
     """out[N_i, C_out] = bias[C_out] + sum_{k=0}^{C_in-1} weight[C_out, k] * input[N_i, k]"""
@@ -14,7 +13,8 @@ class Conv2D(AbstractBlock):
         kernel_size: int,
         stride: int = 1,
         padding: int = 0,
-        bias: bool = True
+        bias: bool = True,
+        dtype: str = "fp32"
     ):
         # Init hyperparams
         self._in = in_channels
@@ -25,10 +25,10 @@ class Conv2D(AbstractBlock):
         self._bias = bias
 
         # Init trainable params and small increments
-        self._w = xavier((self._out, self._in, kernel_size, kernel_size), uniform = False)
-        self._b = np.zeros((self._out), dtype = np.float64)
-        self._dw = np.zeros_like(self._w, dtype = np.float64)
-        self._db = np.zeros_like(self._b, dtype = np.float64)
+        self._w = xavier((self._out, self._in, kernel_size, kernel_size), dtype = dtype, uniform = False)
+        self._b = Tensor.zeros((self._out), dtype = dtype)
+        self._dw = Tensor.zeros(self._w.shape, dtype = dtype)
+        self._db = Tensor.zeros(self._b.shape, dtype = dtype)
 
     def forward(self, x):
         # Check input dims

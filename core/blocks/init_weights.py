@@ -1,9 +1,10 @@
-import numpy as np
+from core.data import Tensor
  
 def xavier(
     shape: tuple[int, int], 
+    dtype: str = "fp32",
     uniform: bool = True
-)-> np.ndarray:
+)-> Tensor:
     """Xavier weights initialization"""
     # Get dims
     if len(shape) == 2:
@@ -14,8 +15,8 @@ def xavier(
 
     # Calculate xavier uniform or xavier normal
     if uniform:
-        limit = np.sqrt(6 / (in_features + out_features))
-        return np.random.uniform(-limit, limit, size=shape)
+        limit = (6 / (in_features + out_features))**0.5
+        return Tensor.random_uniform(-limit, limit, size = shape, dtype = dtype)
     else:
-        std = np.sqrt(2 / (in_features + out_features))
-        return np.random.normal(0, std, size=shape)
+        std = (2 / (in_features + out_features))**0.5
+        return Tensor.random_normal(0, std, size = shape, dtype = dtype)

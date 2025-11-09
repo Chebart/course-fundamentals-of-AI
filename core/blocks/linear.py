@@ -1,7 +1,6 @@
-import numpy as np
-
 from .abstract_block import AbstractBlock
 from .init_weights import xavier 
+from core.data import Tensor
 
 class Linear(AbstractBlock):
     """y = x * w.T + b"""
@@ -10,15 +9,16 @@ class Linear(AbstractBlock):
         self,
         in_features: int,
         out_features: int,
+        dtype: str = "fp32",
         bias: bool = True
     ):
         # Set bias flag
         self._bias = bias
         # Init trainable params and small increments
-        self._w = xavier((out_features, in_features), uniform = True)
-        self._b = np.zeros((out_features), dtype = np.float64)
-        self._dw = np.zeros_like(self._w, dtype = np.float64)
-        self._db = np.zeros_like(self._b, dtype = np.float64)
+        self._w = xavier((out_features, in_features), dtype = dtype, uniform = True)
+        self._b = Tensor.zeros((out_features), dtype = dtype)
+        self._dw = Tensor.zeros(self._w.shape, dtype = dtype)
+        self._db = Tensor.zeros(self._b.shape, dtype = dtype)
         
     def forward(self, x):
         self.x = x

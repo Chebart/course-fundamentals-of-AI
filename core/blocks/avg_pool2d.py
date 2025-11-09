@@ -1,7 +1,6 @@
-import numpy as np
-
-from .abstract_block import AbstractBlock
 from ..utils import split_2d_data_on_windows
+from .abstract_block import AbstractBlock
+from core.data import Tensor
 
 class AvgPool2D(AbstractBlock):
     """ 
@@ -37,7 +36,7 @@ class AvgPool2D(AbstractBlock):
     def backward(self, dLdy):
         # Accumulate gradients
         s, k = self._s, self._k
-        dLdx = np.zeros(self.x_shape, dtype=dLdy.dtype)
+        dLdx = Tensor.zeros(self.x_shape, dtype=dLdy.dtype, device=dLdy.device)
         H_out, W_out = dLdy.shape[2:]
         for i in range(k):
             for j in range(k):

@@ -1,7 +1,6 @@
-import numpy as np
-
-from .abstract_block import AbstractBlock
 from ..utils import split_2d_data_on_windows
+from .abstract_block import AbstractBlock
+from core.data import Tensor
 
 class MaxPool2D(AbstractBlock):
     """ 
@@ -34,8 +33,8 @@ class MaxPool2D(AbstractBlock):
         max_idx = windows_flat.argmax(axis=4)
         
         # Save mask for backward pass
-        self.max_mask = np.zeros_like(windows_flat, dtype=bool)
-        np.put_along_axis(self.max_mask, max_idx[..., None], True, axis=4)
+        self.max_mask = Tensor.zeros(self.x_shape, dtype="bool", device=windows_flat.device)
+        self.max_mask.put_along_axis(max_idx[..., None], True, axis=4)
         self.max_mask = self.max_mask.reshape(N, C, H_out, W_out, k, k)
 
         return windows.max(axis=(4, 5))
@@ -48,7 +47,7 @@ class MaxPool2D(AbstractBlock):
         masked_dLdy = self.max_mask * dLdy[:, :, :, :, None, None]
 
         # Accumulate gradients
-        dLdx = np.zeros(self.x_shape, dtype=dLdy.dtype)
+        dLdx = Tensor.zeros(self.x_shape, dtype=dLdy.dtype, device=dLdy.device)
         H_out, W_out = dLdy.shape[2:]
         s, k = self._s, self._k
         for i in range(k):
