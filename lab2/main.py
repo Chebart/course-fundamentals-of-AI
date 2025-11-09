@@ -16,6 +16,7 @@ from core.utils import train_test_split, batch_split, plot_curves, plot_tsne, pa
 from core.losses import AbstractLoss, CrossEntropyLoss
 from core.optimizers import AbstractOptimizer, SGD, Adam
 from core.models import AbstractModel, LeNet5
+from core.data import Tensor
   
 def train_fn(
     X_train: np.ndarray, 
@@ -29,7 +30,7 @@ def train_fn(
         # Do forward pass
         y_pred = model(train_Xb)
         # Calculate loss
-        loss = loss_fn(y_pred, train_yb).mean()
+        loss = loss_fn(y_pred, train_yb).mean().to_numpy()
         train_stats["loss"].append(loss)
 
         # Do backward pass
@@ -38,6 +39,10 @@ def train_fn(
         optimizer.step()
         # Reset gradients
         optimizer.zero_grad()
+
+        # Convert results to numpy array
+        y_pred = y_pred.to_numpy()
+        train_yb = train_yb.to_numpy()
 
         # Calculate metrics
         num_cls = y_pred.shape[1]
@@ -61,8 +66,12 @@ def test_fn(
         # Do forward pass
         y_pred = model(test_Xb)
         # Calculate loss
-        loss = loss_fn(y_pred, test_yb).mean()
+        loss = loss_fn(y_pred, test_yb).mean().to_numpy()
         test_stats["loss"].append(loss)
+
+        # Convert results to numpy array
+        y_pred = y_pred.to_numpy()
+        test_yb = test_yb.to_numpy()
 
         # Calculate metrics
         num_cls = y_pred.shape[1]
@@ -81,7 +90,10 @@ if __name__ == "__main__":
     TEST_STEP = 3
     EPOCHS = 15
     BATCH_SIZE = 64
-    LR = 1e-5
+    LR = 1e-4
+    DEVICE = "cpu"
+    DTYPE = "fp32"
+
     # Create directory for results
     results_path = f"{os.getcwd()}/lab2/results"
     if os.path.exists(results_path):
@@ -116,12 +128,12 @@ if __name__ == "__main__":
     )
 
     # convert to numpy
-    X = pad_2d_data(X.to_numpy().reshape(-1, 1, 28, 28), 2)
-    y = y.to_numpy()
+    X = Tensor(pad_2d_data(X.to_numpy().reshape(-1, 1, 28, 28), 2), dtype = DTYPE, device=DEVICE)
+    y = Tensor(y.to_numpy(), dtype = DTYPE, device=DEVICE)
     # Split data on train/test
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = TEST_SIZE)
     # init parts
-    model = LeNet5(in_channels = 1, out_channels = 10)
+    model = LeNet5(in_channels = 1, out_channels = 10).to_device(DEVICE)
     loss_fn = CrossEntropyLoss(model = model)
     #optimizer = SGD(model = model, lr = LR, reg_type = "l2", momentum = 0.1, nesterov=True)
     optimizer = Adam(model = model, lr = LR, reg_type = "l2")
@@ -182,8 +194,8 @@ if __name__ == "__main__":
     y_labels = []
     for X_batch, y_batch in batch_split(X_test, y_test, batch_size = BATCH_SIZE):
         probs = model(X_batch)
-        y_probs.append(probs)
-        y_labels.append(y_batch)
+        y_probs.append(probs.to_numpy())
+        y_labels.append(y_batch.to_numpy())
 
     y_probs = np.concatenate(y_probs)
     y_labels = np.concatenate(y_labels)
