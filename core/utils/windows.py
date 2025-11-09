@@ -1,5 +1,7 @@
 import numpy as np
 
+from core.data import Tensor
+
 def pad_2d_data(
     x: np.ndarray,
     pad: int
@@ -12,11 +14,11 @@ def pad_2d_data(
     )
     
 def split_2d_data_on_windows(
-    x: np.ndarray, 
+    x: Tensor, 
     k_size: int, 
     stride: int,
     pad: int
-)-> tuple[np.ndarray, np.ndarray]:
+)-> tuple[Tensor, np.ndarray]:
     """Splits a 4D input (N, C, H, W) into smaller 2D sliding windows of size (k_size, k_size) 
        according to the specified stride and padding"""
     # Apply padding
@@ -37,15 +39,15 @@ def split_2d_data_on_windows(
         x.strides[2],
         x.strides[3],
     )
-    windows = np.lib.stride_tricks.as_strided(x, shape=shape, strides=strides)
+    windows = x.as_strided(shape=shape, strides=strides)
 
     return windows, x.shape
 
 def get_2d_data_from_windows(
-    windows: np.ndarray, 
+    windows: Tensor, 
     stride: int,
     pad: int
-)-> tuple[np.ndarray, np.ndarray]:
+)-> Tensor:
     """Union small 2D sliding windows of size (k_size, k_size) into a 4D input (N, C, H, W)
        according to the specified stride and padding"""
     # Output dimensions
@@ -54,7 +56,7 @@ def get_2d_data_from_windows(
     H_in = (H_out - 1) * stride + k_size
     W_in = (W_out - 1) * stride + k_size
     # Get padded input_data
-    input_data = np.zeros((N, C, H_in, W_in), dtype=windows.dtype)
+    input_data = Tensor.zeros((N, C, H_in, W_in), dtype=windows.dtype, device=windows.device)
     s, k = stride, k_size
     for i in range(H_out):
         for j in range(W_out):
