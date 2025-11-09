@@ -11,16 +11,19 @@ class Tensor:
 
     def __init__(self, data, dtype: str = "fp16", device: str = "cpu"):
         self._backend = Tensor.define_backend(device)
-        self._dtype = Tensor.define_backend(self._backend, dtype)
+        self._dtype = Tensor.get_backend_dtype(self.backend, dtype)
 
         if self.backend.__name__ == "cupy":
             self._device = device
             with self.backend.cuda.Device(self.device_id):
-                self._data = self.backend.asarray(data)
+                self._data = self.backend.asarray(data, dtype = self._dtype)
 
         elif self.backend.__name__ == "numpy":
             self._device = device
-            self._data = self.backend.array(data)
+            self._data = self.backend.array(data, dtype = self._dtype)
+
+        # change dtype on string value
+        self._dtype = dtype
 
     # ---------------------
     # Verification methods
@@ -68,7 +71,7 @@ class Tensor:
 
     @property
     def T(self):
-        return Tensor(self.data.T, self.device)
+        return Tensor(self.data.T, self.dtype, self.device)
 
     @property
     def device(self):
@@ -142,6 +145,48 @@ class Tensor:
     __rtruediv__ = _binary_op(lambda x, y: operator.truediv(y, x))
     __rpow__ = _binary_op(lambda x, y: operator.pow(y, x))
 
+    @staticmethod
+    def _inplace_binary_op(op_func):
+        def method(self, other):
+            if isinstance(other, Tensor):
+                if not self.same_device(other):
+                    raise ValueError(
+                        f"Expected all tensors to be on the same device, "
+                        f"but found {self.device} and {other.device}!"
+                    )
+                self._data = op_func(self.data, other.data)
+            else:
+                self._data = op_func(self.data, other)
+
+            return self
+        
+        return method
+
+    __iadd__ = _inplace_binary_op(operator.iadd)
+    __isub__ = _inplace_binary_op(operator.isub)
+    __imul__ = _inplace_binary_op(operator.imul)
+    __itruediv__ = _inplace_binary_op(operator.itruediv)
+    __ipow__ = _inplace_binary_op(operator.ipow)
+
+    def _matmul_op():
+        def method(self, other):
+            if not isinstance(other, Tensor):
+                raise TypeError(f"Matrix multiplication requires a Tensor, got {type(other)}")
+
+            if not self.same_device(other):
+                raise ValueError(
+                    f"Expected all tensors to be on the same device, "
+                    f"but found {self.device} and {other.device}"
+                )
+
+            result = self.backend.matmul(self.data, other.data)
+            return Tensor(result, self.dtype, self.device)
+        
+        return method
+
+    __matmul__ = _matmul_op()
+    __rmatmul__ = _matmul_op()
+
     # ---------------------
     # Unary operation methods
     # ---------------------
@@ -199,6 +244,9 @@ class Tensor:
     # Utility methods
     # ---------------------
 
+    def __len__(self):
+        return self.shape[0]
+
     def fill(self, value: int):
         self._data.fill(value)
         return self
@@ -209,7 +257,8 @@ class Tensor:
     @staticmethod
     def zeros(shape, dtype = "fp16", device="cpu")-> Tensor:
         backend = Tensor.define_backend(device)
-        return Tensor(backend.zeros(shape, dtype=dtype), dtype, device)
+        backend_dtype = Tensor.get_backend_dtype(backend, dtype)
+        return Tensor(backend.zeros(shape, dtype = backend_dtype), dtype, device)
     
     @staticmethod
     def eye(
@@ -219,7 +268,8 @@ class Tensor:
         device: str = "cpu"
     )-> Tensor:
         backend = Tensor.define_backend(device)
-        return Tensor(backend.eye(n, m), dtype, device)
+        backend_dtype = Tensor.get_backend_dtype(backend, dtype)
+        return Tensor(backend.eye(n, m, dtype = backend_dtype), dtype, device)
 
     @staticmethod
     def random_uniform(
@@ -242,6 +292,16 @@ class Tensor:
     )-> Tensor:
         backend = Tensor.define_backend(device)
         return Tensor(backend.random.normal(mean, std, size = size), dtype, device)
+
+    # ---------------------
+    # Data type conversion methods
+    # ---------------------
+
+    def to_numpy(self):
+        if self.backend.__name__ == "cupy":
+            return self.data.get()
+        elif self.backend.__name__ == "numpy":
+            return self.data
 
     # ---------------------
     # Representation methods
