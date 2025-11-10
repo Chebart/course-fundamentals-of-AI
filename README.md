@@ -1,6 +1,6 @@
-# CuTorch
+# CuPyTorch
 
-CuTorch is a collection of laboratory works for the ITMO University course "Fundamentals of organizing artificial intelligence systems". In addition to completing course assignments, the project’s goal is to develop a custom ML library inspired by PyTorch, enabling the training and evaluation of models with various architectures on both CPU/GPU backends. This repository can also be used as a learning resource to understand:
+CuPyTorch is a collection of laboratory works for the ITMO University course "Fundamentals of organizing artificial intelligence systems". In addition to completing course assignments, the project’s goal is to develop a custom ML library inspired by PyTorch, enabling the training and evaluation of models with various architectures on both CPU/GPU backends. This repository can also be used as a learning resource to understand:
 - How neural network layers are implemented  
 - How different model architectures are structured  
 - How backpropagation works in practice  
