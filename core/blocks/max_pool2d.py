@@ -33,7 +33,7 @@ class MaxPool2D(AbstractBlock):
         max_idx = windows_flat.argmax(axis=4)
         
         # Save mask for backward pass
-        self.max_mask = Tensor.zeros(self.x_shape, dtype="bool", device=windows_flat.device)
+        self.max_mask = Tensor.zeros(windows_flat.shape, dtype="bool", device=windows_flat.device)
         self.max_mask.put_along_axis(max_idx[..., None], True, axis=4)
         self.max_mask = self.max_mask.reshape(N, C, H_out, W_out, k, k)
 
