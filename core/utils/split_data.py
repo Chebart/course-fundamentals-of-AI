@@ -1,12 +1,14 @@
 import numpy as np
 
+from core.data import Tensor
+
 def train_test_split(
-    X: np.ndarray, 
-    y: np.ndarray, 
+    X: Tensor, 
+    y: Tensor, 
     test_size: float = 0.2, 
     shuffle: bool = True, 
     random_state: int = 42
-)-> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+)-> tuple[Tensor, Tensor, Tensor, Tensor]:
     """Split arrays into random train and test subsets"""
     # Get objects count
     n_samples = X.shape[0]
@@ -27,8 +29,8 @@ def train_test_split(
     return X_train, X_test, y_train, y_test
 
 def batch_split(
-    X: np.ndarray, 
-    y: np.ndarray, 
+    X: Tensor, 
+    y: Tensor, 
     batch_size: int = 8, 
     shuffle: bool = True, 
     random_state: int = 42
