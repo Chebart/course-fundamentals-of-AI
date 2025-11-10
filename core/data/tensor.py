@@ -1,4 +1,5 @@
 from __future__ import annotations
+import contextlib
 import operator
 
 from .backend import AVAILABLE_BACKENDS
@@ -12,14 +13,12 @@ class Tensor:
     def __init__(self, data, dtype: str = "fp16", device: str = "cpu"):
         self._backend = Tensor.define_backend(device)
         self._dtype = Tensor.get_backend_dtype(self.backend, dtype)
+        self._device = device
 
         if self.backend.__name__ == "cupy":
-            self._device = device
-            with self.backend.cuda.Device(self.device_id):
+            with self.device_context():
                 self._data = self.backend.asarray(data, dtype = self._dtype)
-
         elif self.backend.__name__ == "numpy":
-            self._device = device
             self._data = self.backend.array(data, dtype = self._dtype)
 
         # change dtype on string value
@@ -124,10 +123,22 @@ class Tensor:
         return self
 
     # ---------------------
+    # Context manager protocol
+    # ---------------------
+
+    @contextlib.contextmanager
+    def device_context(self):
+        if self.backend.__name__ == "cupy":
+            with self.backend.cuda.Device(self.device_id):
+                yield
+        elif self.backend.__name__ == "numpy":
+            yield
+
+    # ---------------------
     # Binary operation methods
     # ---------------------
 
-    def _binary_op(op_func):
+    def _binary_op(op_func, inplace: bool = False, matmul: bool = False):
         def method(self, other):
             if isinstance(other, Tensor):
                 if not self.same_device(other):
@@ -135,74 +146,52 @@ class Tensor:
                         f"Expected all tensors to be on the same device, "
                         f"but found {self.device} and {other.device}!"
                     )
-                result = op_func(self.data, other.data)
-            else:
-                result = op_func(self.data, other)
+                other = other.data
 
-            return Tensor(result, self.dtype, self.device)
+            with self.device_context():
+                if matmul:
+                    result = self.backend.matmul(self.data, other)
+                else:
+                    result = op_func(self.data, other)
+
+            if inplace:
+                self._data = result
+                return self
+            else:
+                return Tensor(result, self.dtype, self.device)
         
         return method
     
-    __add__ = _binary_op(operator.add)
-    __sub__ = _binary_op(operator.sub)
-    __mul__ = _binary_op(operator.mul)
-    __truediv__ = _binary_op(operator.truediv)
-    __pow__ = _binary_op(operator.pow)
-
+    # Out-place ops
+    __add__ = _binary_op(operator.add, inplace = False, matmul = False)
+    __sub__ = _binary_op(operator.sub, inplace = False, matmul = False)
+    __mul__ = _binary_op(operator.mul, inplace = False, matmul = False)
+    __truediv__ = _binary_op(operator.truediv, inplace = False, matmul = False)
+    __pow__ = _binary_op(operator.pow, inplace = False, matmul = False)
     __radd__ = __add__
-    __rsub__ = _binary_op(lambda x, y: operator.sub(y, x))
+    __rsub__ = _binary_op(lambda x, y: operator.sub(y, x), inplace = False, matmul = False)
     __rmul__ = __mul__
-    __rtruediv__ = _binary_op(lambda x, y: operator.truediv(y, x))
-    __rpow__ = _binary_op(lambda x, y: operator.pow(y, x))
+    __rtruediv__ = _binary_op(lambda x, y: operator.truediv(y, x), inplace = False, matmul = False)
+    __rpow__ = _binary_op(lambda x, y: operator.pow(y, x), inplace = False, matmul = False)
 
-    __gt__ = _binary_op(lambda a, b: a > b)
-    __lt__ = _binary_op(lambda a, b: a < b)
-    __ge__ = _binary_op(lambda a, b: a >= b)
-    __le__ = _binary_op(lambda a, b: a <= b)
-    __eq__ = _binary_op(lambda a, b: a == b)
-    __ne__ = _binary_op(lambda a, b: a != b)
+    # In-place ops
+    __iadd__ = _binary_op(operator.iadd, inplace = True, matmul = False)
+    __isub__ = _binary_op(operator.isub, inplace = True, matmul = False)
+    __imul__ = _binary_op(operator.imul, inplace = True, matmul = False)
+    __itruediv__ = _binary_op(operator.itruediv, inplace = True, matmul = False)
+    __ipow__ = _binary_op(operator.ipow, inplace = True, matmul = False)
 
-    @staticmethod
-    def _inplace_binary_op(op_func):
-        def method(self, other):
-            if isinstance(other, Tensor):
-                if not self.same_device(other):
-                    raise ValueError(
-                        f"Expected all tensors to be on the same device, "
-                        f"but found {self.device} and {other.device}!"
-                    )
-                self._data = op_func(self.data, other.data)
-            else:
-                self._data = op_func(self.data, other)
+    # Comparison ops
+    __gt__ = _binary_op(lambda a, b: a > b, inplace = False, matmul = False)
+    __lt__ = _binary_op(lambda a, b: a < b, inplace = False, matmul = False)
+    __ge__ = _binary_op(lambda a, b: a >= b, inplace = False, matmul = False)
+    __le__ = _binary_op(lambda a, b: a <= b, inplace = False, matmul = False)
+    __eq__ = _binary_op(lambda a, b: a == b, inplace = False, matmul = False)
+    __ne__ = _binary_op(lambda a, b: a != b, inplace = False, matmul = False)
 
-            return self
-        
-        return method
-
-    __iadd__ = _inplace_binary_op(operator.iadd)
-    __isub__ = _inplace_binary_op(operator.isub)
-    __imul__ = _inplace_binary_op(operator.imul)
-    __itruediv__ = _inplace_binary_op(operator.itruediv)
-    __ipow__ = _inplace_binary_op(operator.ipow)
-
-    def _matmul_op():
-        def method(self, other):
-            if not isinstance(other, Tensor):
-                raise TypeError(f"Matrix multiplication requires a Tensor, got {type(other)}")
-
-            if not self.same_device(other):
-                raise ValueError(
-                    f"Expected all tensors to be on the same device, "
-                    f"but found {self.device} and {other.device}"
-                )
-
-            result = self.backend.matmul(self.data, other.data)
-            return Tensor(result, self.dtype, self.device)
-        
-        return method
-
-    __matmul__ = _matmul_op()
-    __rmatmul__ = _matmul_op()
+    # Matrix multiplier ops
+    __matmul__ = _binary_op(None, inplace = False, matmul = True)
+    __rmatmul__ = _binary_op(None, inplace = False, matmul = True)
 
     # ---------------------
     # Unary operation methods
@@ -230,8 +219,11 @@ class Tensor:
 
     def __getitem__(self, index)-> Tensor:
         if isinstance(index, Tensor):
-            index = index.data.astype(int)
-        return Tensor(self.data[index], self.dtype, self.device)
+            with index.device_context():
+                index = index.data.astype(int)
+
+        with self.device_context():
+            return Tensor(self.data[index], self.dtype, self.device)
     
     def __setitem__(self, index, value):
         if isinstance(index, Tensor):
@@ -256,12 +248,12 @@ class Tensor:
         )
 
     def put_along_axis(self, indices, values, axis):
-        if indices.ndim == self.data.ndim - 1:
-            indices = self.backend.expand_dims(indices, axis=axis)
+        if isinstance(indices, Tensor):
+            indices = indices.data.astype(int)
+        if isinstance(values, Tensor):
+            values = values.data
 
-        idx = self.backend.ogrid[tuple(map(slice, self.data.shape))]
-        idx[axis] = indices
-        self.data[tuple(idx)] = values
+        self.backend.put_along_axis(self.data, indices, values, axis=axis)
 
     # ---------------------
     # Aggregation methods
