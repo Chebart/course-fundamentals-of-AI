@@ -8,6 +8,7 @@ class AbstractModel(ABC):
             raise NotImplementedError(
                 "Models must have self.layers attribute!"
             )
+        self.device = "cpu"
 
     def __call__(self, x: Tensor)-> Tensor:
         return self.forward(x)
@@ -27,6 +28,7 @@ class AbstractModel(ABC):
 
     def to_device(self, device: str):
         """Move all model blocks to needed device"""
+        self.device = device
         for layer in self.layers:
             layer.to_device(device)
 
