@@ -7,3 +7,4 @@ from .avg_pool2d import AvgPool2D
 from .relu import ReLU
 from .conv2d import Conv2D
 from .reshape import Reshape
+from .tanh import Tanh
