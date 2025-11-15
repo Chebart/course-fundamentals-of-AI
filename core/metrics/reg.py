@@ -20,4 +20,4 @@ def r2(
     eps: float = 1e-8
 )->np.ndarray:
     """1 - sum((y_true - y_pred)**2) / sum((y_true - y_true.mean())**2)"""
-    return 1 - np.sum((y_true - y_pred)**2) / np.sum((y_true - np.mean(y_true))**2 + eps)
+    return 1 - np.sum((y_true - y_pred)**2) / (np.sum((y_true - np.mean(y_true))**2) + eps)
