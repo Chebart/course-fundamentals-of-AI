@@ -18,7 +18,7 @@ class AbstractOptimizer(ABC):
         self.reg_type = reg_type
         self.lmbda = lmbda
         self.alpha = alpha
-        self.eps: float = 1e-8
+        self.eps: float = 1e-6
 
     def get_grad_reg(self, w: Tensor)-> Tensor|float:
         """Get gradient of regularization term"""

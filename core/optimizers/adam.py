@@ -54,4 +54,4 @@ class Adam(AbstractOptimizer):
             v_corrected = self.v[i] / (1 - self.beta2**self.t)
 
             # update the parameters
-            p -= self.lr * (m_corrected / (v_corrected**0.5 + self.eps))
+            p -= self.lr * (m_corrected / (v_corrected.sqrt() + self.eps))
