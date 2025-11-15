@@ -10,7 +10,7 @@ class Tensor:
     and seamless CPU/GPU device tracking.
     """
 
-    def __init__(self, data, dtype: str = "fp16", device: str = "cpu"):
+    def __init__(self, data, dtype: str = "fp32", device: str = "cpu"):
         self._backend = Tensor.define_backend(device)
         self._dtype = Tensor.get_backend_dtype(self.backend, dtype)
         self._device = device
@@ -213,6 +213,12 @@ class Tensor:
     def sign(self)-> Tensor:
         return Tensor(self.backend.sign(self.data), self.dtype, self.device)
 
+    def sqrt(self):
+        return Tensor(self.backend.sqrt(self.data), self.dtype, self.device)
+
+    def tanh(self)-> Tensor:
+        return Tensor(self.backend.tanh(self.data), self.dtype, self.device)
+
     # ---------------------
     # Views methods
     # ---------------------
@@ -287,6 +293,30 @@ class Tensor:
     
     def clone(self)-> Tensor:
         return Tensor(self.data.copy(), self.dtype, self.device)
+
+    def clip(self, min_val: float, max_val: float):
+        self.backend.clip(self.data, a_min = min_val, a_max = max_val, out = self.data)
+        return self
+
+    @staticmethod
+    def concat(arr: list, axis: int, dtype = "fp16", device="cpu")-> Tensor:
+        for i, element in enumerate(arr):
+            if isinstance(element, Tensor):
+                arr[i] = element.data
+
+        backend = Tensor.define_backend(device)
+        backend_dtype = Tensor.get_backend_dtype(backend, dtype)
+        return Tensor(backend.concatenate(arr, axis = axis, dtype = backend_dtype), dtype, device)
+    
+    @staticmethod
+    def stack(arr: list, axis: int, dtype = "fp16", device="cpu")-> Tensor:
+        for i, element in enumerate(arr):
+            if isinstance(element, Tensor):
+                arr[i] = element.data
+
+        backend = Tensor.define_backend(device)
+        backend_dtype = Tensor.get_backend_dtype(backend, dtype)
+        return Tensor(backend.stack(arr, axis = axis, dtype = backend_dtype), dtype, device)
 
     @staticmethod
     def zeros(shape, dtype = "fp16", device="cpu")-> Tensor:
