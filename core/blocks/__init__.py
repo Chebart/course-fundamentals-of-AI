@@ -8,3 +8,4 @@ from .relu import ReLU
 from .conv2d import Conv2D
 from .reshape import Reshape
 from .tanh import Tanh
+from .block_rnn import RNNBlock
