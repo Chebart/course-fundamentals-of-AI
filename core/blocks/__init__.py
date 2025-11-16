@@ -10,3 +10,4 @@ from .reshape import Reshape
 from .tanh import Tanh
 from .block_rnn import RNNBlock
 from .block_lstm import LSTMBlock
+from .block_gru import GRUBlock
