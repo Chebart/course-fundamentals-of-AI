@@ -15,4 +15,5 @@ from .relu_leaky import LeakyReLU
 from .tanh import Tanh
 from .softmax import Softmax
 
+from .batch_norm2d import BatchNorm2d
 from .reshape import Reshape
