@@ -41,7 +41,8 @@ CuPyTorch is a collection of laboratory works for the ITMO University course "Fu
 │   └── utils        # Utility functions for training and evaluation
 │
 ├── lab1             # MLP training
-└── lab2             # LeNet-5 training
+├── lab2             # LeNet-5 training
+└── lab3             # RNN/LSTM/GRU training
 ```
 
 ---
