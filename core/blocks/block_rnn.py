@@ -27,7 +27,7 @@ class RNNBlock(AbstractBlock):
         self._tanh_by_t = []
         self._combined_by_t = []
         
-    def forward(self, inp, h_prev, t):
+    def forward(self, inp, h_prev):
         # create tanh for timestamp
         tanh = Tanh()
         # calcute hidden state

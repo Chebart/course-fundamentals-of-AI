@@ -31,7 +31,7 @@ class RNN(AbstractModel):
         for t in range(T):
             for l, layer in enumerate(self.layers):
                 inp = x[t] if l == 0 else h_prev[l-1]
-                h = layer.forward(inp, h_prev[l], t)
+                h = layer.forward(inp, h_prev[l])
                 h_prev[l] = h
 
             output.append(h_prev[-1].clone())
