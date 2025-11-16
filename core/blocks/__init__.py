@@ -2,6 +2,7 @@ from .abstract_block import AbstractBlock
 
 from .linear import Linear
 from .conv2d import Conv2D
+from .conv_transpose2d import ConvTranspose2D
 from .block_rnn import RNNBlock
 from .block_lstm import LSTMBlock
 from .block_gru import GRUBlock
