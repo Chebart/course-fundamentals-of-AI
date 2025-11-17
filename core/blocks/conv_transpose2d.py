@@ -67,10 +67,10 @@ class ConvTranspose2D(AbstractBlock):
 
     def backward(self, dLdy):
         # dLdy shape is (N, out_channels, H_out, W_out)
-        self._db = dLdy.sum(axis=(0, 2, 3))
+        self._db += dLdy.sum(axis=(0, 2, 3))
 
         dLdy = dLdy.transpose(0, 2, 3, 1).reshape(-1, self._out)
-        self._dw = (dLdy.T @ self.x_col).reshape(self._w.shape)
+        self._dw += (dLdy.T @ self.x_col).reshape(self._w.shape)
 
         N, C, H_out, W_out, k_size, _ = self.windows.shape
         dLdx_col = (dLdy @ self.w_col).reshape(N, H_out, W_out, C, k_size, k_size)

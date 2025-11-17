@@ -37,8 +37,8 @@ class BatchNorm2d(AbstractBlock):
         N, C, H, W = dLdy.shape
         M = N * H * W
 
-        self._db = dLdy.sum(axis=(0, 2, 3))
-        self._dg = (dLdy * self.x_scaled).sum(axis=(0, 2, 3))
+        self._db += dLdy.sum(axis=(0, 2, 3))
+        self._dg += (dLdy * self.x_scaled).sum(axis=(0, 2, 3))
 
         g = self._g.reshape(1, C, 1, 1)
         dLdx_scaled = dLdy * g

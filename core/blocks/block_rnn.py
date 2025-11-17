@@ -51,8 +51,8 @@ class RNNBlock(AbstractBlock):
     def backward(self, dLdy, t):
         self._dtanh = self._tanh_by_t[t].backward(dLdy)
 
-        self._dw = (self._dtanh.T @ self._combined_by_t[t]).clip(-1, 1)
-        self._db = (self._dtanh.sum(axis=0)).clip(-1, 1)
+        self._dw += (self._dtanh.T @ self._combined_by_t[t]).clip(-1, 1)
+        self._db += (self._dtanh.sum(axis=0)).clip(-1, 1)
         self._dcombined = self._dtanh @ self._w
 
         dLdx = self._dcombined[:, :self.input_size]

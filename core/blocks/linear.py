@@ -31,7 +31,7 @@ class Linear(AbstractBlock):
             return [('w', self._w, self._dw)]
         
     def backward(self, dLdy):
-        self._dw = dLdy.T @ self.x
-        self._db = dLdy.sum(axis=0)
+        self._dw += dLdy.T @ self.x
+        self._db += dLdy.sum(axis=0)
         dLdx = dLdy @ self._w
         return dLdx

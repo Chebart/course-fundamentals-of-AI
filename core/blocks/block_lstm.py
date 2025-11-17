@@ -98,8 +98,8 @@ class LSTMBlock(AbstractBlock):
         dLdg = self._g_by_t[t].backward(dLdc * self._i_by_t[t].y)
 
         dGates = Tensor.concat([dLdi, dLdf, dLdo, dLdg], axis = 1, dtype = dLdi.dtype, device = dLdi.device)
-        self._dw = dGates.T @ self._combined_by_t[t]
-        self._db = dGates.sum(axis=0)
+        self._dw += dGates.T @ self._combined_by_t[t]
+        self._db += dGates.sum(axis=0)
         
         self._dcombined = dGates @ self._w
         dLdx = self._dcombined[:, :self.input_size]

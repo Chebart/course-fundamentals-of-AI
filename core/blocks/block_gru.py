@@ -83,8 +83,8 @@ class GRUBlock(AbstractBlock):
         dLdz = dh_next * (h_prev - self._h_tilda_by_t[t].y) * z * (1 - z)
 
         dGates = Tensor.concat([dLdz, dLdr, dLdh_tilda], axis = 1, dtype = dLdr.dtype, device = dLdr.device)
-        self._dw = dGates.T @ self._combined_by_t[t]
-        self._db = dGates.sum(axis=0)
+        self._dw += dGates.T @ self._combined_by_t[t]
+        self._db += dGates.sum(axis=0)
 
         self._dcombined = dGates @ self._w
         dLdx = self._dcombined[:, :self.input_size]
