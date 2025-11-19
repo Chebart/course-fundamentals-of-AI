@@ -47,32 +47,36 @@ def train_fn(
         # -------------------------
         # Train Encoder + Generator
         # -------------------------
-        mu, sigma, z = models["enc"](train_Xb)
+        mu, logvar, z = models["enc"](train_Xb)
         recon = models["gen"](z)
 
         # Calculate reconstruction loss
         rec_loss = losses["rec_loss"](recon, train_Xb).mean().to_numpy()
         train_stats["rec_loss"].append(rec_loss)
-        losses["rec_loss"].backward(recon, train_Xb)
+        dLdz_rec = losses["rec_loss"].backward(recon, train_Xb) # get rec_loss derivative from generator
 
         # Calculate generator loss
         preds = models["disc"](recon)
         targets = Tensor.ones(preds.shape, dtype = preds.dtype, device = preds.device)
         loss_G = losses["g_loss"](preds, targets).mean().to_numpy()
         train_stats["g_loss"].append(loss_G)
-        dLdx_fake = losses["g_loss"].backward(preds, targets)
-        dLdz_gen = models["gen"].backward(dLdx_fake)
+        dLdx_fake = losses["g_loss"].backward(preds, targets) # get g_loss derivative through discriminator
+        dLdz_gen = models["gen"].backward(dLdx_fake) # get g_loss derivative from generator
 
         # Calculate KL loss
-        kl_loss = -0.5 * (1 + sigma - mu**2 - sigma.exp()).mean().to_numpy()
+        kl_loss = -0.5 * (1 + logvar - mu**2 - logvar.exp()).mean().to_numpy()
         train_stats["kl_loss"].append(kl_loss)
 
+        # Use combined derivative for encoder
         dKL_dmu = mu / mu.shape[0]
-        dKL_dsigma = 0.5 * (sigma.exp() - 1) / sigma.shape[0]
+        dKL_dlogvar = 0.5 * (logvar.exp() - 1) / logvar.shape[0]
         dLdz_gen_dmu = dLdz_gen
-        dLdz_gen_dsigma = dLdz_gen * models["enc"].eps * (0.5 * models["enc"].std)
-        dmu_total = dLdz_gen_dmu + dKL_dmu
-        dsigma_total = dLdz_gen_dsigma + dKL_dsigma
+        dLdz_gen_dlogvar = dLdz_gen * models["enc"].eps * 0.5 * models["enc"].std
+        dLdz_rec_dmu = dLdz_rec
+        dLdz_rec_dlogvar = dLdz_rec * models["enc"].eps * 0.5 * models["enc"].std
+
+        dmu_total = dLdz_gen_dmu + dKL_dmu + dLdz_rec_dmu
+        dsigma_total = dLdz_gen_dlogvar + dKL_dlogvar + dLdz_rec_dlogvar
         d_encoder_out = Tensor.concat(
             [dmu_total, dsigma_total], 
             axis = 1, 
@@ -101,7 +105,7 @@ def test_fn(
     losses: list[AbstractLoss]
 )-> np.ndarray:
     test_stats = {"g_loss": [], "d_loss": [], "rec_loss": [], "kl_loss": []}
-    for test_Xb, _ in batch_split(X_test, y_test, batch_size = BATCH_SIZE): 
+    for batch_idx, (test_Xb, _) in enumerate(batch_split(X_test, y_test, batch_size = BATCH_SIZE)): 
         # -------------------------
         # Test Discriminator
         # -------------------------
@@ -128,7 +132,7 @@ def test_fn(
         rec_loss = losses["rec_loss"](recon, test_Xb).mean().to_numpy()
         test_stats["rec_loss"].append(rec_loss)
 
-        kl_loss = -0.5 * (1 + sigma - mu.pow(2) - sigma.exp()).mean().to_numpy()
+        kl_loss = -0.5 * (1 + sigma - mu**2 - sigma.exp()).mean().to_numpy()
         test_stats["kl_loss"].append(kl_loss)
 
         preds = models["disc"](recon)
@@ -139,12 +143,15 @@ def test_fn(
         # -------------------------
         # Save restored images
         # -------------------------
-        save_mnist_grid(recon, test_Xb)
+        recon = recon[:, 0].to_numpy()
+        test_Xb  = test_Xb[:, 0].to_numpy()
+        save_mnist_grid(recon, test_Xb, save_path = f"{results_path}/gen_res/test_batch_{batch_idx}.png")
 
     logging.info(f"test g_loss: {np.array(test_stats['g_loss']).mean()}")
     logging.info(f"test d_loss: {np.array(test_stats['d_loss']).mean()}")
     logging.info(f"test rec_loss: {np.array(test_stats['rec_loss']).mean()}")
     logging.info(f"test kl_loss: {np.array(test_stats['kl_loss']).mean()}")
+
     return test_stats
 
 if __name__ == "__main__":
@@ -152,17 +159,24 @@ if __name__ == "__main__":
     Z_DIM = 64
     TEST_SIZE = 0.3
     TEST_STEP = 3
-    EPOCHS = 1
+    EPOCHS = 60
     BATCH_SIZE = 64
-    LR = 1e-4
-    DEVICE = "cpu"
+    ENC_LR = 2e-4
+    GEN_LR = 2e-4
+    DISC_LR = 2e-4
+    DEVICE = "cuda:0"
     DTYPE = "fp32"
 
-    # Create directory for results
+    # Create needed directories
     results_path = f"{os.getcwd()}/lab4/results"
     if os.path.exists(results_path):
         shutil.rmtree(results_path)
-    os.makedirs(results_path)
+    
+    os.makedirs(results_path, exist_ok=True)
+    os.makedirs(f"{results_path}/gen_res", exist_ok=True)
+    os.makedirs(f"{results_path}/train", exist_ok=True)
+    os.makedirs(f"{results_path}/test", exist_ok=True)
+
     # Setup logger
     logging.basicConfig(
         filename=f"{results_path}/main.log",
@@ -172,8 +186,9 @@ if __name__ == "__main__":
 
     # Get dataset
     mnist = fetch_openml('mnist_784')
-    X = mnist.data.astype('float16')
-    y = mnist.target.astype('int')
+    # [:BATCH_SIZE]
+    X = mnist.data.astype('float32')[:30 * BATCH_SIZE] / 255
+    y = mnist.target.astype('int')[:30 * BATCH_SIZE]
 
     # convert to numpy
     X = Tensor(pad_2d_data(X.to_numpy().reshape(-1, 1, 28, 28), 2), dtype = DTYPE, device=DEVICE)
@@ -192,9 +207,9 @@ if __name__ == "__main__":
         "d_loss": BCELoss(model = models["disc"])
     }
     optimizers = {
-        "enc": Adam(model = models["enc"], lr = LR, reg_type = "l2"),
-        "gen": Adam(model = models["gen"], lr = LR, reg_type = "l2"),
-        "disc": Adam(model = models["disc"], lr = LR, reg_type = "l2")
+        "enc": Adam(model = models["enc"], lr = ENC_LR, beta1 = 0.5, beta2 = 0.999, reg_type = None),
+        "gen": Adam(model = models["gen"], lr = GEN_LR, beta1 = 0.5, beta2 = 0.999, reg_type = None),
+        "disc": Adam(model = models["disc"], lr = DISC_LR, beta1 = 0.5, beta2 = 0.999, reg_type = None)
     }
 
     # Train loop
@@ -219,19 +234,22 @@ if __name__ == "__main__":
                 test_stats_by_epochs[key].append(np.mean(val_lst))
 
     # draw training/testing stats
-    plot_curves(
-        np.arange(len(train_stats_by_epochs["g_loss"])),
-        np.array(list(train_stats_by_epochs.values())),
-        "Train loss plot",
-        "epochs",
-        "Train loss",
-        f"{results_path}/train_loss.png"
-    )
-    plot_curves(
-        np.arange(len(test_stats_by_epochs["g_loss"])),
-        np.array(list(test_stats_by_epochs.values())),
-        "Test loss plot",
-        "epochs",
-        "Test loss",
-        f"{results_path}/test_loss.png"
-    )
+    for key, val in train_stats_by_epochs.items():
+        plot_curves(
+            np.arange(len(val)) + 1,
+            np.array(list(val)),
+            f"Train {key} plot",
+            "epochs",
+            f"Train {key}",
+            f"{results_path}/train/{key}.png"
+        )
+    
+    for key, val in test_stats_by_epochs.items():
+        plot_curves(
+            np.arange(len(val)) + 1,
+            np.array(list(val)),
+            f"Test {key} plot",
+            "epochs",
+            f"Test {key}",
+            f"{results_path}/test/{key}.png"
+        )
