@@ -8,4 +8,5 @@ class MSELoss(AbstractLoss):
         
     def backward(self, y_pred, y_true):
         dLdy = 2 * (y_pred - y_true) / y_true.shape[0]
-        self.model.backward(dLdy)
+        dLdy = self.model.backward(dLdy)
+        return dLdy

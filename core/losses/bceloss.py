@@ -9,4 +9,5 @@ class BCELoss(AbstractLoss):
         
     def backward(self, y_pred, y_true):
         dLdy = (y_pred - y_true) / (y_pred * (1 - y_pred) + self.eps) / len(y_true)
-        self.model.backward(dLdy)
+        dLdy = self.model.backward(dLdy)
+        return dLdy

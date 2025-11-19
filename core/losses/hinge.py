@@ -11,4 +11,5 @@ class HingeLoss(AbstractLoss):
     def backward(self, y_pred, y_true):
         margins = y_true * y_pred
         dLdy = Tensor.where(1 - margins > 0, -y_true, 0, dtype=margins.dtype, device=margins.device) / len(margins)
-        self.model.backward(dLdy)
+        dLdy = self.model.backward(dLdy)
+        return dLdy

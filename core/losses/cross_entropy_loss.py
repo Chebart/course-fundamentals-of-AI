@@ -14,4 +14,5 @@ class CrossEntropyLoss(AbstractLoss):
     def backward(self, y_pred, y_true):
         y_true = self._convert_labels_to_one_hot(y_pred.shape[1], y_true)
         dLdy = -y_true / (y_pred * y_true.shape[0] + self.eps)
-        self.model.backward(dLdy)
+        dLdy = self.model.backward(dLdy)
+        return dLdy
