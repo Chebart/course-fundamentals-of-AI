@@ -3,15 +3,24 @@ import numpy as np
 from core.data import Tensor
 
 def pad_2d_data(
-    x: np.ndarray,
+    x: Tensor|np.ndarray,
     pad: int
 )-> np.ndarray:
     """Adds zero pad to 2d input that pooling or convolution operations can handle borders properly"""
-    return np.pad(
-        x, 
-        ((0, 0), (0, 0), (pad, pad), (pad, pad)), 
-        mode='constant'
-    )
+    if isinstance(x, Tensor):
+        return Tensor.pad(
+            x, 
+            ((0, 0), (0, 0), (pad, pad), (pad, pad)), 
+            mode='constant',
+            dtype = x.dtype,
+            device = x.device
+        )
+    else:
+        return np.pad(
+            x, 
+            ((0, 0), (0, 0), (pad, pad), (pad, pad)), 
+            mode='constant'
+        )   
     
 def split_2d_data_on_windows(
     x: Tensor, 
