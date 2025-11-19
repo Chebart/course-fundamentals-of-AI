@@ -1,5 +1,3 @@
-from typing import Literal
-
 from ..blocks import Linear, Sigmoid, Conv2D, ConvTranspose2D, BatchNorm2d, ReLU, LeakyReLU, Reshape
 from .abstract_model import AbstractModel
 from ..data import Tensor
@@ -31,10 +29,10 @@ class VAEEncoder(AbstractModel):
             x = layer(x)
 
         self.mu = x[:, :self.z_dim]
-        self.sigma = x[:, self.z_dim:]
-        self.std = 0.5 * self.sigma.exp()
+        self.logvar = x[:, self.z_dim:]
+        self.std = 0.5 * self.logvar.exp()
         self.eps = Tensor.random_normal(mean = 0, std = 1, size = self.mu.shape, dtype = self.mu.dtype, device = self.mu.device)
-        return self.mu, self.sigma, self.eps * self.std + self.mu
+        return self.mu, self.logvar, self.eps * self.std + self.mu
     
     def backward(self, dLdy):
         for _, layer in enumerate(reversed(self.layers)):
@@ -69,7 +67,6 @@ class Generator(AbstractModel):
     def backward(self, dLdy):
         for _, layer in enumerate(reversed(self.layers)):
             dLdy = layer.backward(dLdy)
-
         return dLdy
 
 class Discriminator(AbstractModel):
@@ -94,12 +91,11 @@ class Discriminator(AbstractModel):
         super().__init__()
 
     def forward(self, x):
-        for idx, layer in enumerate(self.layers):
+        for _, layer in enumerate(self.layers):
             x = layer(x)
         return x
     
     def backward(self, dLdy):
         for _, layer in enumerate(reversed(self.layers)):
             dLdy = layer.backward(dLdy)
-
         return dLdy
