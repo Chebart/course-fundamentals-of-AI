@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from PIL import Image
 import numpy as np
 
 def plot_curves(
@@ -50,16 +51,16 @@ def save_mnist_grid(
     save_path: str
 ):
     # get array dims
-    N, H, W = recon.shape
+    B, H, W = recon.shape
     # combine preds and targets
     pairs = np.concatenate([recon, init], axis=2)
 
     # Compute grid size
-    grid_cols = int(np.ceil(np.sqrt(N)))
-    grid_rows = int(np.ceil(N / grid_cols))
+    grid_cols = int(np.ceil(np.sqrt(B)))
+    grid_rows = int(np.ceil(B / grid_cols))
     total_cells = grid_rows * grid_cols
-    if total_cells > N:
-        pad = total_cells - N
+    if total_cells > B:
+        pad = total_cells - B
         pairs = np.concatenate(
             [pairs, np.zeros((pad, H, 2*W), dtype = pairs.dtype)], 
             axis=0
@@ -68,4 +69,12 @@ def save_mnist_grid(
     # reshape grid to quadratic shape
     grid = pairs.reshape(grid_rows, grid_cols, H, 2 * W)
     grid = grid.swapaxes(1, 2).reshape(grid_rows * H, grid_cols * 2 * W)
-    np.save(save_path, grid)
+
+    # save as image
+    if grid.max() <= 1.0:
+        grid = (grid * 255).astype(np.uint8)
+    else:
+        grid = grid.astype(np.uint8)
+
+    img = Image.fromarray(grid)
+    img.save(save_path)
