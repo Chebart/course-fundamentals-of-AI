@@ -299,6 +299,13 @@ class Tensor:
         return self
 
     @staticmethod
+    def pad(array, pad_width, mode = "constant", dtype = "fp16", device="cpu")-> Tensor:
+        if isinstance(array, Tensor):
+            array = array.data
+        backend = Tensor.define_backend(device)
+        return Tensor(backend.pad(array, pad_width, mode = mode), dtype, device)
+
+    @staticmethod
     def concat(arr: list, axis: int, dtype = "fp16", device="cpu")-> Tensor:
         for i, element in enumerate(arr):
             if isinstance(element, Tensor):
@@ -319,10 +326,16 @@ class Tensor:
         return Tensor(backend.stack(arr, axis = axis, dtype = backend_dtype), dtype, device)
 
     @staticmethod
-    def zeros(shape, dtype = "fp16", device="cpu")-> Tensor:
+    def zeros(shape, dtype = "fp16", device = "cpu")-> Tensor:
         backend = Tensor.define_backend(device)
         backend_dtype = Tensor.get_backend_dtype(backend, dtype)
         return Tensor(backend.zeros(shape, dtype = backend_dtype), dtype, device)
+    
+    @staticmethod
+    def ones(shape, dtype = "fp16", device = "cpu")-> Tensor:
+        backend = Tensor.define_backend(device)
+        backend_dtype = Tensor.get_backend_dtype(backend, dtype)
+        return Tensor(backend.ones(shape, dtype = backend_dtype), dtype, device)
     
     @staticmethod
     def eye(
@@ -367,6 +380,21 @@ class Tensor:
 
         backend = Tensor.define_backend(device)
         return Tensor(backend.maximum(x1, x2), dtype, device)
+    
+    @staticmethod
+    def minimum(
+        x1, 
+        x2,
+        dtype = "fp16", 
+        device: str = "cpu"          
+    )-> Tensor:
+        if isinstance(x1, Tensor):
+            x1 = x1.data
+        if isinstance(x2, Tensor):
+            x2 = x2.data
+
+        backend = Tensor.define_backend(device)
+        return Tensor(backend.minimum(x1, x2), dtype, device)
 
     @staticmethod
     def random_uniform(
