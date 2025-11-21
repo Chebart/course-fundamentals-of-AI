@@ -58,9 +58,11 @@ def save_restoration_grid(
     init = (255 * min_max_normalization(init)).astype(np.uint8)
 
     # get array dims
-    B, H, W = recon.shape
-    # combine preds and targets
-    pairs = np.concatenate([recon, init], axis=2)
+    B, C, H, W = recon.shape
+    # convert to (B, H, W, C)
+    recon_t = np.transpose(recon, (0, 2, 3, 1))
+    init_t = np.transpose(init, (0, 2, 3, 1))
+    pairs = np.concatenate([recon_t, init_t], axis=2)
 
     # Compute grid size
     grid_cols = int(np.ceil(np.sqrt(B)))
@@ -69,13 +71,17 @@ def save_restoration_grid(
     if total_cells > B:
         pad = total_cells - B
         pairs = np.concatenate(
-            [pairs, np.zeros((pad, H, 2*W), dtype = pairs.dtype)], 
+            [pairs, np.zeros((pad, H, 2*W, C), dtype = pairs.dtype)], 
             axis=0
         )
 
     # reshape grid to quadratic shape
-    grid = pairs.reshape(grid_rows, grid_cols, H, 2 * W)
-    grid = grid.swapaxes(1, 2).reshape(grid_rows * H, grid_cols * 2 * W)
+    grid = pairs.reshape(grid_rows, grid_cols, H, 2 * W, C)
+    grid = grid.swapaxes(1, 2).reshape(grid_rows * H, grid_cols * 2 * W, C)
     # save as image
-    img = Image.fromarray(grid)
+    if C == 1:
+        img = Image.fromarray(grid.squeeze(-1))
+    else:
+        img = Image.fromarray(grid)
+
     img.save(save_path)
