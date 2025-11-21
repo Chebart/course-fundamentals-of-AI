@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import numpy as np
 
+from .normalize import min_max_normalization
+
 def plot_curves(
     x: np.ndarray, 
     y: np.ndarray, 
@@ -45,11 +47,16 @@ def plot_tsne(
     plt.savefig(save_path, dpi=300, bbox_inches="tight")
     plt.close()
 
-def save_mnist_grid(
+def save_restoration_grid(
     recon: np.ndarray,
     init: np.ndarray, 
     save_path: str
 ):
+    """Draws reconstruction results"""
+    # normalize reconstructed images
+    recon = (255 * min_max_normalization(recon)).astype(np.uint8)
+    init = (255 * min_max_normalization(init)).astype(np.uint8)
+
     # get array dims
     B, H, W = recon.shape
     # combine preds and targets
@@ -69,12 +76,6 @@ def save_mnist_grid(
     # reshape grid to quadratic shape
     grid = pairs.reshape(grid_rows, grid_cols, H, 2 * W)
     grid = grid.swapaxes(1, 2).reshape(grid_rows * H, grid_cols * 2 * W)
-
     # save as image
-    if grid.max() <= 1.0:
-        grid = (grid * 255).astype(np.uint8)
-    else:
-        grid = grid.astype(np.uint8)
-
     img = Image.fromarray(grid)
     img.save(save_path)
