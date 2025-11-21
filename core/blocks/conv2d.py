@@ -66,7 +66,7 @@ class Conv2D(AbstractBlock):
 
         N, C, H_out, W_out, k_size, _ = self.windows.shape
         dLdx_col = (dLdy @ self.w_col).reshape(N, H_out, W_out, C, k_size, k_size)
-        dLdx_col = dLdx_col.reshape(N, C, H_out, W_out, k_size, k_size)
+        dLdx_col = dLdx_col.transpose(0, 3, 1, 2, 4, 5)
         dLdx = get_2d_data_from_windows(dLdx_col, stride = self._s, pad = self._p)
 
         return dLdx
