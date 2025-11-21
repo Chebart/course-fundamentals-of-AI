@@ -1,4 +1,4 @@
-from ..blocks import Linear, Sigmoid, Conv2D, ConvTranspose2D, BatchNorm2d, ReLU, LeakyReLU, Reshape
+from ..blocks import Linear, Sigmoid, Conv2D, ConvTranspose2D, BatchNorm2d, ReLU, LeakyReLU, Reshape, Tanh
 from .abstract_model import AbstractModel
 from ..data import Tensor
 
@@ -30,7 +30,7 @@ class VAEEncoder(AbstractModel):
 
         self.mu = x[:, :self.z_dim]
         self.logvar = x[:, self.z_dim:]
-        self.std = 0.5 * self.logvar.exp()
+        self.std = (0.5 * self.logvar).exp()
         self.eps = Tensor.random_normal(mean = 0, std = 1, size = self.mu.shape, dtype = self.mu.dtype, device = self.mu.device)
         return self.mu, self.logvar, self.eps * self.std + self.mu
     
@@ -55,7 +55,7 @@ class Generator(AbstractModel):
             BatchNorm2d(32),
             ReLU(),
             ConvTranspose2D(32, out_channels, kernel_size = 4, stride = 2, padding = 1),
-            Sigmoid()
+            Tanh()
         ]
         super().__init__()
 
