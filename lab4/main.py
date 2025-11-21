@@ -9,7 +9,8 @@ import numpy as np
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, parent_dir)
 
-from core.utils import train_test_split, batch_split, plot_curves, pad_2d_data, save_mnist_grid
+from core.utils import train_test_split, batch_split, plot_curves, \
+                       save_restoration_grid, standard_normalization
 from core.losses import AbstractLoss, MSELoss, BCELoss
 from core.optimizers import AbstractOptimizer, Adam
 from core.models import AbstractModel, VAEEncoder, Generator, Discriminator
@@ -68,8 +69,9 @@ def train_fn(
         train_stats["kl_loss"].append(kl_loss)
 
         # Use combined derivative for encoder
-        dKL_dmu = mu / mu.shape[0]
-        dKL_dlogvar = 0.5 * (logvar.exp() - 1) / logvar.shape[0]
+        norm = mu.shape[0] * mu.shape[1]
+        dKL_dmu = mu / norm
+        dKL_dlogvar = 0.5 * (logvar.exp() - 1) / norm
         dLdz_gen_dmu = dLdz_gen
         dLdz_gen_dlogvar = dLdz_gen * models["enc"].eps * 0.5 * models["enc"].std
         dLdz_rec_dmu = dLdz_rec
@@ -125,14 +127,14 @@ def test_fn(
         # -------------------------
         # Test Encoder + Generator
         # -------------------------
-        mu, sigma, z = models["enc"](test_Xb)
+        mu, logvar, z = models["enc"](test_Xb)
         recon = models["gen"](z)
 
         # Calculate losses
         rec_loss = losses["rec_loss"](recon, test_Xb).mean().to_numpy()
         test_stats["rec_loss"].append(rec_loss)
 
-        kl_loss = -0.5 * (1 + sigma - mu**2 - sigma.exp()).mean().to_numpy()
+        kl_loss = -0.5 * (1 + logvar - mu**2 - logvar.exp()).mean().to_numpy()
         test_stats["kl_loss"].append(kl_loss)
 
         preds = models["disc"](recon)
@@ -143,9 +145,9 @@ def test_fn(
         # -------------------------
         # Save restored images
         # -------------------------
-        recon = recon[:, 0].to_numpy()
-        test_Xb  = test_Xb[:, 0].to_numpy()
-        save_mnist_grid(recon, test_Xb, save_path = f"{results_path}/gen_res/test_batch_{batch_idx}.png")
+        recon = recon.to_numpy()
+        test_Xb  = test_Xb.to_numpy()
+        save_restoration_grid(recon, test_Xb, save_path = f"{results_path}/gen_res/test_batch_{batch_idx}.png")
 
     logging.info(f"test g_loss: {np.array(test_stats['g_loss']).mean()}")
     logging.info(f"test d_loss: {np.array(test_stats['d_loss']).mean()}")
@@ -158,12 +160,12 @@ if __name__ == "__main__":
     # Init constants
     Z_DIM = 64
     TEST_SIZE = 0.3
-    TEST_STEP = 3
-    EPOCHS = 60
+    TEST_STEP = 4
+    EPOCHS = 40
     BATCH_SIZE = 64
-    ENC_LR = 2e-4
-    GEN_LR = 2e-4
-    DISC_LR = 2e-4
+    ENC_LR = 1e-4
+    GEN_LR = 1e-4
+    DISC_LR = 1e-4
     DEVICE = "cuda:0"
     DTYPE = "fp32"
 
@@ -185,21 +187,21 @@ if __name__ == "__main__":
     )
 
     # Get dataset
-    mnist = fetch_openml('mnist_784')
-    # [:BATCH_SIZE]
-    X = mnist.data.astype('float32')[:30 * BATCH_SIZE] / 255
-    y = mnist.target.astype('int')[:30 * BATCH_SIZE]
+    dataset = fetch_openml("CIFAR_10", version=1)
+    X = dataset.data.astype('float32') / 255
+    X = standard_normalization(X, 0.5, 0.5)
+    y = dataset.target.astype('int')
 
     # convert to numpy
-    X = Tensor(pad_2d_data(X.to_numpy().reshape(-1, 1, 28, 28), 2), dtype = DTYPE, device=DEVICE)
+    X = Tensor(X.to_numpy().reshape(-1, 3, 32, 32), dtype = DTYPE, device=DEVICE)
     y = Tensor(y.to_numpy(), dtype = DTYPE, device=DEVICE)
     # Split data on train/test
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = TEST_SIZE)
     # init parts VAEEncoder, Generator, Discriminator
     models = {
-        "enc": VAEEncoder(in_channels = 1, z_dim = Z_DIM).to_device(DEVICE),
-        "gen": Generator(z_dim = Z_DIM, out_channels = 1).to_device(DEVICE),
-        "disc": Discriminator(in_channels = 1, out_features = 1).to_device(DEVICE)
+        "enc": VAEEncoder(in_channels = 3, z_dim = Z_DIM).to_device(DEVICE),
+        "gen": Generator(z_dim = Z_DIM, out_channels = 3).to_device(DEVICE),
+        "disc": Discriminator(in_channels = 3, out_features = 1).to_device(DEVICE)
     }
     losses = {
         "rec_loss": MSELoss(model = models["gen"]),
